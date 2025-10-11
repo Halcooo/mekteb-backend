@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2020", // modern JS
+    "module": "nodenext", // for native ES modules
+    "moduleResolution": "nodenext", // important for ES modules in Node
+    "rootDir": "src",
+    "outDir": "dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*"]
+}
