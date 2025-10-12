@@ -8,6 +8,8 @@ import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import imageRoutes from "./routes/imageRoutes.js";
+import commentRoutes from "./routes/commentRoutes.js";
+import parentRoutes from "./routes/parentRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -34,6 +36,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/images", imageRoutes);
 app.use("/api/attendance", attendanceRoutes);
+app.use("/api/comments", commentRoutes);
+app.use("/api/parent", parentRoutes);
 
 // Root endpoint for basic server status
 app.get("/", (req, res) => {
@@ -48,6 +52,8 @@ app.get("/", (req, res) => {
       students: "/api/students",
       attendance: "/api/attendance",
       images: "/api/images",
+      comments: "/api/comments",
+      parent: "/api/parent",
     },
   });
 });

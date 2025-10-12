@@ -5,7 +5,11 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "migrate": "tsx scripts/migrate.js",
+    "migrate:up": "tsx scripts/migrate.js up",
+    "migrate:rollback": "tsx scripts/migrate.js rollback",
+    "migrate:status": "tsx scripts/migrate.js status"
   },
   "keywords": [],
   "author": "",

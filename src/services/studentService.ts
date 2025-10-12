@@ -1,5 +1,6 @@
 import pool from "../db.js";
 import { RowDataPacket } from "mysql2";
+import { generateUniqueParentKey } from "../utils/parentKeyGenerator.js";
 
 // Database interface (using underscore_case for DB columns)
 export interface StudentDB extends RowDataPacket {
@@ -9,6 +10,7 @@ export interface StudentDB extends RowDataPacket {
   last_name: string;
   date_of_birth: Date;
   grade_level: string;
+  parent_key: string | null;
   created_at?: Date;
 }
 
@@ -20,6 +22,7 @@ export interface Student {
   lastName: string;
   dateOfBirth: Date;
   gradeLevel: string;
+  parentKey: string | null;
   createdAt?: Date;
 }
 
@@ -46,6 +49,20 @@ export interface PaginatedStudentsResult {
 }
 
 export class StudentService {
+  // Check if a parent key already exists
+  private static async parentKeyExists(parentKey: string): Promise<boolean> {
+    try {
+      const [rows] = await pool.query<any[]>(
+        "SELECT COUNT(*) as count FROM students WHERE parent_key = ?",
+        [parentKey]
+      );
+      return rows[0].count > 0;
+    } catch (error) {
+      console.error("Error checking parent key existence:", error);
+      return true; // Assume it exists to be safe
+    }
+  }
+
   // Helper function to convert DB format to API format
   private static mapDbToApi(dbStudent: StudentDB): Student {
     return {
@@ -55,6 +72,7 @@ export class StudentService {
       lastName: dbStudent.last_name,
       dateOfBirth: dbStudent.date_of_birth,
       gradeLevel: dbStudent.grade_level,
+      parentKey: dbStudent.parent_key,
       createdAt: dbStudent.created_at,
     };
   }
@@ -189,9 +207,21 @@ export class StudentService {
       const { parentId, firstName, lastName, dateOfBirth, gradeLevel } =
         studentData;
 
+      // Generate unique parent key
+      const parentKey = await generateUniqueParentKey(
+        StudentService.parentKeyExists
+      );
+
       const [result] = await pool.query(
-        "INSERT INTO students (parent_id, first_name, last_name, date_of_birth, grade_level, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
-        [parentId || null, firstName, lastName, dateOfBirth, gradeLevel]
+        "INSERT INTO students (parent_id, first_name, last_name, date_of_birth, grade_level, parent_key, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())",
+        [
+          parentId || null,
+          firstName,
+          lastName,
+          dateOfBirth,
+          gradeLevel,
+          parentKey,
+        ]
       );
 
       const insertResult = result as any;
