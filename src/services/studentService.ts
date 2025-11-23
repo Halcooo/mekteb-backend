@@ -48,8 +48,22 @@ export interface PaginatedStudentsResult {
   totalPages: number;
 }
 
+/**
+ * StudentService - Handles all student CRUD operations and related business logic
+ *
+ * Features:
+ * - Student creation with automatic unique parent key generation
+ * - Pagination support with search filtering
+ * - Parent key validation and lookup
+ * - Database to API format conversion with camelCase/snake_case handling
+ */
 export class StudentService {
-  // Check if a parent key already exists
+  /**
+   * Checks if a parent key already exists in the database
+   * @param parentKey - The parent key string to validate
+   * @returns Promise<boolean> - True if key exists, false otherwise (defaults to true on error for safety)
+   * @private
+   */
   private static async parentKeyExists(parentKey: string): Promise<boolean> {
     try {
       const [rows] = await pool.query<any[]>(
@@ -63,7 +77,12 @@ export class StudentService {
     }
   }
 
-  // Helper function to convert DB format to API format
+  /**
+   * Converts database record (snake_case) to API format (camelCase)
+   * @param dbStudent - Student record from database with snake_case columns
+   * @returns Student - Formatted object with camelCase properties
+   * @private
+   */
   private static mapDbToApi(dbStudent: StudentDB): Student {
     return {
       id: dbStudent.id,
@@ -77,6 +96,21 @@ export class StudentService {
     };
   }
 
+  /**
+   * Retrieves paginated list of students with optional search filtering
+   * @param page - Page number (1-indexed, default: 1)
+   * @param limit - Items per page (default: 10)
+   * @param search - Optional search string to filter by name, grade, or full name
+   * @returns Promise<PaginatedStudentsResult> - Paginated students with total count/pages
+   * @throws Error on database query failure
+   *
+   * @example
+   * // Get all students
+   * const result = await StudentService.getAllStudents(1, 10);
+   *
+   * // Search students by name
+   * const searchResult = await StudentService.getAllStudents(1, 10, "Ahmed");
+   */
   static async getAllStudents(
     page: number = 1,
     limit: number = 10,

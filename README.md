@@ -270,3 +270,61 @@ This project is licensed under the ISC License.
 ## 🔗 Related Projects
 
 - [Mekteb E-Dnevnik Frontend](../mekteb-e-dnevnik) - React frontend application
+
+---
+
+## 📖 Code Organization & Architecture Guide
+
+### 🏗️ Project Structure
+
+```
+backend/src/
+├── controllers/        # HTTP request handlers
+├── services/          # Business logic & DB operations
+├── routes/            # API endpoint definitions
+├── middleware/        # Express middleware
+├── utils/             # Helper functions
+├── db.ts              # Database connection
+└── index.ts           # App setup & route registration
+```
+
+### 📝 Key Naming Patterns
+
+| Type | Convention | Example |
+|------|-----------|---------|
+| Controllers | `*Controller.ts` | `StudentController.ts` |
+| Services | `*Service.ts` | `StudentService.ts` |
+| Routes | `*Routes.ts` | `studentRoutes.ts` |
+| DB columns | snake_case | `first_name` |
+| API fields | camelCase | `firstName` |
+
+### 🏛️ MVC Pattern Flow
+
+```
+Request → Route → Controller → Service → Database
+          ↓        ↓           ↓          ↓
+        HTTP    Validate    Business   CRUD
+```
+
+### 📚 Service Layer Documentation
+
+All services use JSDoc comments with parameters, return types, and examples:
+
+```typescript
+/**
+ * Creates a new student with auto-generated parent key
+ * @param data - Student creation data
+ * @returns Promise<Student> - Created student
+ * @throws Error if key generation fails
+ */
+static async createStudent(data: CreateStudentData): Promise<Student>
+```
+
+### ✅ Best Practices Applied
+
+1. ✓ Services contain business logic
+2. ✓ Controllers handle HTTP only
+3. ✓ Database format (snake_case) vs API format (camelCase) conversion in services
+4. ✓ JSDoc comments on all public methods
+5. ✓ Error handling with descriptive messages
+6. ✓ Consistent naming conventions across codebase
