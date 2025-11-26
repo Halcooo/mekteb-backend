@@ -13,35 +13,10 @@ import parentRoutes from "./routes/parentRoutes.js";
 
 dotenv.config();
 const app = express();
-const allowedOrigins = [
-  "https://mekteb-pazaric.com",
-  "https://www.mekteb-pazaric.com"
-];
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin || "";
-  console.log("Origin:", origin, "Requested URL:", req.url, "Method:", req.method);
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, DELETE, OPTIONS"
-    );
-    res.setHeader(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization"
-    );
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-  }
+// CORS Configuration - Allow all origins for development
+app.use(cors());
 
-  // Always respond to OPTIONS (preflight)
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
-  }
-
-  next();
-});
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
