@@ -15,10 +15,9 @@ dotenv.config();
 const app = express();
 const allowedOrigins = [
   "https://mekteb-pazaric.com",
-  "https://www.mekteb-pazaric.com",
+  "https://www.mekteb-pazaric.com"
 ];
 
-// CORS middleware
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin!)) {
@@ -33,10 +32,11 @@ app.use((req, res, next) => {
     );
     res.setHeader("Access-Control-Allow-Credentials", "true");
   }
-  // Handle preflight request
+
   if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
+    return res.sendStatus(204); // Preflight request
   }
+
   next();
 });
 // Middleware
