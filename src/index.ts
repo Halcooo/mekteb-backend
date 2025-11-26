@@ -15,7 +15,11 @@ dotenv.config();
 const app = express();
 
 // CORS Configuration - Allow all origins for development
-app.use(cors());
+
+const corsOptions = {
+  origin: "https://www.mekteb-pazaric.com",
+};
+app.use(cors(corsOptions));
 
 // Middleware
 app.use(express.json());
@@ -54,5 +58,6 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
+  console.log("idee");
   console.log(`Server running on http://localhost:${PORT}`);
 });
