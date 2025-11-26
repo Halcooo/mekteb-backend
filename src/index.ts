@@ -20,6 +20,7 @@ const allowedOrigins = [
 
 app.use((req, res, next) => {
   const origin = req.headers.origin || "";
+  console.log("Origin:", origin, "Requested URL:", req.url, "Method:", req.method);
   if (allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader(
