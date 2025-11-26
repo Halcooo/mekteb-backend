@@ -15,24 +15,30 @@ dotenv.config();
 const app = express();
 const allowedOrigins = [
   "https://mekteb-pazaric.com",
-  "https://www.mekteb-pazaric.com"
+  "https://www.mekteb-pazaric.com",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // allow non-browser requests (like Postman)
-      if (allowedOrigins.indexOf(origin) === -1) {
-        return callback(new Error("CORS not allowed"));
-      }
-      return callback(null, true);
-    },
-    credentials: true, // if using cookies/session
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-
+// CORS middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin!)) {
+    res.setHeader("Access-Control-Allow-Origin", origin!);
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization"
+    );
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+  // Handle preflight request
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
