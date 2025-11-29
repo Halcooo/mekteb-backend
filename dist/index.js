@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const path_1 = __importDefault(require("path"));
 // Load environment variables
 dotenv_1.default.config();
 // Import your routes (remove .js extensions)
@@ -26,6 +27,7 @@ app.use((0, cors_1.default)(corsOptions));
 // Middleware
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
+app.use(`${API_PREFIX}/uploads/news-images`, express_1.default.static(path_1.default.join(process.cwd(), "uploads/news-images")));
 // API Routes
 app.use(`${API_PREFIX}/health`, healthRoutes_1.default);
 app.use(`${API_PREFIX}/news`, newsRoutes_1.default);

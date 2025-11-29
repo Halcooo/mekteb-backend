@@ -27,6 +27,10 @@ app.use(cors(corsOptions));
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(
+  `${API_PREFIX}/uploads/news-images`,
+  express.static(path.join(process.cwd(), "uploads/news-images"))
+);
 
 // API Routes
 app.use(`${API_PREFIX}/health`, healthRoutes);
@@ -62,6 +66,4 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 5000; // fallback for local dev
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  
-
 });
