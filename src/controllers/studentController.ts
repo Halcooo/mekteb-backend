@@ -3,7 +3,7 @@ import {
   StudentService,
   CreateStudentData,
   UpdateStudentData,
-} from "../services/studentService.js";
+} from "../services/studentService";
 
 export class StudentController {
   static async getAllStudents(req: Request, res: Response): Promise<void> {

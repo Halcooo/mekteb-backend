@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HealthController = void 0;
-const healthService_js_1 = require("../services/healthService.js");
+const healthService_1 = require("../services/healthService");
 class HealthController {
     static async checkHealth(req, res) {
         try {
-            const time = await healthService_js_1.HealthService.checkDatabaseConnection();
+            const time = await healthService_1.HealthService.checkDatabaseConnection();
             res.json({
                 message: "DB Connected!",
                 time: time,

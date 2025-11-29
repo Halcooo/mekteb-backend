@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { UserService } from "../services/userService.js";
+import { UserService } from "../services/userService";
 
 export class UserController {
   static async getAllUsers(req: Request, res: Response): Promise<void> {

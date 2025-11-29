@@ -4,7 +4,7 @@ import {
   CreateAttendanceData,
   UpdateAttendanceData,
   AttendanceStatus,
-} from "../services/attendanceService.js";
+} from "../services/attendanceService";
 
 export class AttendanceController {
   static async getAllAttendance(req: Request, res: Response): Promise<void> {

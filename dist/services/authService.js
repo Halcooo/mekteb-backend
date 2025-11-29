@@ -5,8 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
-const userService_js_1 = require("./userService.js");
-const jwtService_js_1 = require("./jwtService.js");
+const userService_1 = require("./userService");
+const jwtService_1 = require("./jwtService");
 class AuthService {
     static async hashPassword(password) {
         try {
@@ -30,14 +30,14 @@ class AuthService {
         try {
             const { firstName, lastName, username, email, password, role = "user", } = userData;
             // Check if user already exists (email or username)
-            const existingUserByEmail = await userService_js_1.UserService.getUserByEmail(email);
+            const existingUserByEmail = await userService_1.UserService.getUserByEmail(email);
             if (existingUserByEmail) {
                 return {
                     success: false,
                     message: "User with this email already exists",
                 };
             }
-            const existingUserByUsername = await userService_js_1.UserService.getUserByUsername(username);
+            const existingUserByUsername = await userService_1.UserService.getUserByUsername(username);
             if (existingUserByUsername) {
                 return {
                     success: false,
@@ -55,11 +55,11 @@ class AuthService {
                 first_name: firstName,
                 last_name: lastName,
             };
-            const newUser = await userService_js_1.UserService.createUser(createUserData);
+            const newUser = await userService_1.UserService.createUser(createUserData);
             // Remove password from response
             const { password: _, ...userWithoutPassword } = newUser;
             // Generate JWT tokens
-            const { accessToken, refreshToken } = jwtService_js_1.JwtService.generateTokenPair({
+            const { accessToken, refreshToken } = jwtService_1.JwtService.generateTokenPair({
                 userId: newUser.id,
                 username: newUser.username,
                 email: newUser.email,
@@ -85,7 +85,7 @@ class AuthService {
         try {
             const { username, password } = loginData;
             // Find user by username
-            const user = await userService_js_1.UserService.getUserByUsername(username);
+            const user = await userService_1.UserService.getUserByUsername(username);
             if (!user) {
                 return {
                     success: false,
@@ -103,7 +103,7 @@ class AuthService {
             // Remove password from response
             const { password: _, ...userWithoutPassword } = user;
             // Generate JWT tokens
-            const { accessToken, refreshToken } = jwtService_js_1.JwtService.generateTokenPair({
+            const { accessToken, refreshToken } = jwtService_1.JwtService.generateTokenPair({
                 userId: user.id,
                 username: user.username,
                 email: user.email,
@@ -128,7 +128,7 @@ class AuthService {
     static async refreshToken(refreshToken) {
         try {
             // Verify refresh token
-            const payload = jwtService_js_1.JwtService.verifyRefreshToken(refreshToken);
+            const payload = jwtService_1.JwtService.verifyRefreshToken(refreshToken);
             if (!payload) {
                 return {
                     success: false,
@@ -136,7 +136,7 @@ class AuthService {
                 };
             }
             // Get user data
-            const user = await userService_js_1.UserService.getUserById(payload.userId);
+            const user = await userService_1.UserService.getUserById(payload.userId);
             if (!user) {
                 return {
                     success: false,
@@ -144,7 +144,7 @@ class AuthService {
                 };
             }
             // Generate new token pair
-            const tokens = jwtService_js_1.JwtService.generateTokenPair({
+            const tokens = jwtService_1.JwtService.generateTokenPair({
                 userId: user.id,
                 username: user.username,
                 email: user.email,

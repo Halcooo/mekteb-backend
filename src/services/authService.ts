@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
-import { UserService, User, CreateUserData } from "./userService.js";
-import { JwtService } from "./jwtService.js";
+import { UserService, User, CreateUserData } from "./userService";
+import { JwtService } from "./jwtService";
 
 export interface LoginData {
   username: string;

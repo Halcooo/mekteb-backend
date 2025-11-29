@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.optionalAuth = exports.requireRole = exports.authenticateToken = void 0;
-const jwtService_js_1 = require("../services/jwtService.js");
+const jwtService_1 = require("../services/jwtService");
 /**
  * Middleware to authenticate JWT tokens
  */
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
-    const token = jwtService_js_1.JwtService.extractTokenFromHeader(authHeader);
+    const token = jwtService_1.JwtService.extractTokenFromHeader(authHeader);
     if (!token) {
         res.status(401).json({
             success: false,
@@ -16,7 +16,7 @@ const authenticateToken = (req, res, next) => {
         });
         return;
     }
-    const payload = jwtService_js_1.JwtService.verifyAccessToken(token);
+    const payload = jwtService_1.JwtService.verifyAccessToken(token);
     if (!payload) {
         res.status(401).json({
             success: false,
@@ -66,9 +66,9 @@ exports.requireRole = requireRole;
  */
 const optionalAuth = (req, res, next) => {
     const authHeader = req.headers.authorization;
-    const token = jwtService_js_1.JwtService.extractTokenFromHeader(authHeader);
+    const token = jwtService_1.JwtService.extractTokenFromHeader(authHeader);
     if (token) {
-        const payload = jwtService_js_1.JwtService.verifyAccessToken(token);
+        const payload = jwtService_1.JwtService.verifyAccessToken(token);
         if (payload) {
             req.user = {
                 userId: payload.userId,

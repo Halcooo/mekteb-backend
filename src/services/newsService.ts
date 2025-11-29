@@ -1,12 +1,12 @@
-import pool from "../db.js";
+import pool from "../db";
 import { RowDataPacket } from "mysql2";
-import { generateImageUrl } from "../middleware/multerConfig.js";
-import { keysToCamelCase, keysToSnakeCase } from "../utils/caseConverter.js";
+import { generateImageUrl } from "../middleware/multerConfig";
+import { keysToCamelCase, keysToSnakeCase } from "../utils/caseConverter";
 import {
   formatBosnianDate,
   formatBosnianDateTime,
-} from "../utils/dateFormatter.js";
-import { NewsItem, NewsImage, PaginatedNewsResponse } from "../types/index.js";
+} from "../utils/dateFormatter";
+import { NewsItem, NewsImage, PaginatedNewsResponse } from "../types/index";
 
 // Database row interfaces (kept for internal database operations)
 interface NewsRow extends RowDataPacket {

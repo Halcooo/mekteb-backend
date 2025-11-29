@@ -1,6 +1,6 @@
-import pool from "../db.js";
+import pool from "../db";
 import { RowDataPacket } from "mysql2";
-import { generateUniqueParentKey } from "../utils/parentKeyGenerator.js";
+import { generateUniqueParentKey } from "../utils/parentKeyGenerator";
 
 // Database interface (using underscore_case for DB columns)
 export interface StudentDB extends RowDataPacket {

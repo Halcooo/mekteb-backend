@@ -3,7 +3,7 @@ import {
   AuthService,
   LoginData,
   RegisterData,
-} from "../services/authService.js";
+} from "../services/authService";
 
 export class AuthController {
   static async register(req: Request, res: Response): Promise<void> {

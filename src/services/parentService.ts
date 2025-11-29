@@ -1,6 +1,6 @@
-import pool from "../db.js";
+import pool from "../db";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
-import { StudentService } from "./studentService.js";
+import { StudentService } from "./studentService";
 
 export interface ParentStudent {
   id: number;

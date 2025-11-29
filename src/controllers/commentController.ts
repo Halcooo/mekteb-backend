@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import {
   CommentService,
   CreateCommentData,
-} from "../services/commentService.js";
+} from "../services/commentService";
 
 export interface AuthenticatedRequest extends Request {
   user?: {

@@ -4,11 +4,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HealthService = void 0;
-const db_js_1 = __importDefault(require("../db.js"));
+const db_1 = __importDefault(require("../db"));
 class HealthService {
     static async checkDatabaseConnection() {
         try {
-            const [rows] = await db_js_1.default.query("SELECT NOW() AS time");
+            const [rows] = await db_1.default.query("SELECT NOW() AS time");
             const timeRow = rows[0];
             return timeRow.time;
         }

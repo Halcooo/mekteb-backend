@@ -4,8 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NewsController = void 0;
-const newsService_js_1 = require("../services/newsService.js");
-const multerConfig_js_1 = require("../middleware/multerConfig.js");
+const newsService_1 = require("../services/newsService");
+const multerConfig_1 = require("../middleware/multerConfig");
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 class NewsController {
@@ -21,7 +21,7 @@ class NewsController {
                 });
                 return;
             }
-            const result = await newsService_js_1.NewsService.getAllNews(page, limit);
+            const result = await newsService_1.NewsService.getAllNews(page, limit);
             res.json(result);
         }
         catch (error) {
@@ -43,7 +43,7 @@ class NewsController {
                 });
                 return;
             }
-            const news = await newsService_js_1.NewsService.getNewsById(id);
+            const news = await newsService_1.NewsService.getNewsById(id);
             if (!news) {
                 res.status(404).json({
                     success: false,
@@ -78,7 +78,7 @@ class NewsController {
             }
             // Get user ID from JWT token (set by authenticateToken middleware)
             const created_by = req.user.userId;
-            const newNews = await newsService_js_1.NewsService.createNews({
+            const newNews = await newsService_1.NewsService.createNews({
                 title,
                 text,
                 createdBy: created_by,
@@ -118,7 +118,7 @@ class NewsController {
                 });
                 return;
             }
-            const updatedNews = await newsService_js_1.NewsService.updateNews(id, { title, text });
+            const updatedNews = await newsService_1.NewsService.updateNews(id, { title, text });
             if (!updatedNews) {
                 res.status(404).json({
                     success: false,
@@ -151,7 +151,7 @@ class NewsController {
                 });
                 return;
             }
-            const deleted = await newsService_js_1.NewsService.deleteNews(id);
+            const deleted = await newsService_1.NewsService.deleteNews(id);
             if (!deleted) {
                 res.status(404).json({
                     success: false,
@@ -183,7 +183,7 @@ class NewsController {
                 });
                 return;
             }
-            const news = await newsService_js_1.NewsService.getNewsByAuthor(created_by);
+            const news = await newsService_1.NewsService.getNewsByAuthor(created_by);
             res.json({
                 success: true,
                 data: news,
@@ -211,7 +211,7 @@ class NewsController {
                 return;
             }
             // Check if news exists
-            const news = await newsService_js_1.NewsService.getNewsById(newsId);
+            const news = await newsService_1.NewsService.getNewsById(newsId);
             if (!news) {
                 res.status(404).json({
                     success: false,
@@ -230,11 +230,11 @@ class NewsController {
             const uploadedImages = [];
             for (const file of files) {
                 const relativePath = `uploads/news-images/${file.filename}`;
-                const imageId = await newsService_js_1.NewsService.addNewsImage(newsId, relativePath, file.originalname, file.size, file.mimetype);
+                const imageId = await newsService_1.NewsService.addNewsImage(newsId, relativePath, file.originalname, file.size, file.mimetype);
                 uploadedImages.push({
                     id: imageId,
                     path: relativePath,
-                    url: (0, multerConfig_js_1.generateImageUrl)(relativePath),
+                    url: (0, multerConfig_1.generateImageUrl)(relativePath),
                     originalName: file.originalname,
                     size: file.size,
                     mimeType: file.mimetype,
@@ -265,10 +265,10 @@ class NewsController {
                 });
                 return;
             }
-            const images = await newsService_js_1.NewsService.getNewsImages(newsId);
+            const images = await newsService_1.NewsService.getNewsImages(newsId);
             const imagesWithUrls = images.map((image) => ({
                 ...image,
-                url: (0, multerConfig_js_1.generateImageUrl)(image.imagePath),
+                url: (0, multerConfig_1.generateImageUrl)(image.imagePath),
             }));
             res.json({
                 success: true,
@@ -295,7 +295,7 @@ class NewsController {
                 return;
             }
             // Get image info before deletion
-            const image = await newsService_js_1.NewsService.getImageById(imageId);
+            const image = await newsService_1.NewsService.getImageById(imageId);
             if (!image) {
                 res.status(404).json({
                     success: false,
@@ -304,7 +304,7 @@ class NewsController {
                 return;
             }
             // Delete from database
-            const deleted = await newsService_js_1.NewsService.deleteNewsImage(imageId);
+            const deleted = await newsService_1.NewsService.deleteNewsImage(imageId);
             if (!deleted) {
                 res.status(404).json({
                     success: false,
@@ -313,7 +313,7 @@ class NewsController {
                 return;
             }
             // Delete file from filesystem
-            (0, multerConfig_js_1.deleteImageFile)(image.image_path);
+            (0, multerConfig_1.deleteImageFile)(image.image_path);
             res.json({
                 success: true,
                 message: "Image deleted successfully",
@@ -342,7 +342,7 @@ class NewsController {
             }
             // Get image info from database for security
             const relativeImagePath = `uploads/news-images/${fileName}`;
-            const imageInfo = await newsService_js_1.NewsService.getImageByPath(relativeImagePath);
+            const imageInfo = await newsService_1.NewsService.getImageByPath(relativeImagePath);
             if (!imageInfo) {
                 res.status(404).json({
                     success: false,

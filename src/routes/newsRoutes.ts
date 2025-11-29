@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { NewsController } from "../controllers/newsController.js";
+import { NewsController } from "../controllers/newsController";
 import {
   authenticateToken,
   requireRole,
-} from "../middleware/authMiddleware.js";
-import { uploadNewsImages } from "../middleware/multerConfig.js";
+} from "../middleware/authMiddleware";
+import { uploadNewsImages } from "../middleware/multerConfig";
 
 const router = Router();
 

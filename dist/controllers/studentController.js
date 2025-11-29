@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StudentController = void 0;
-const studentService_js_1 = require("../services/studentService.js");
+const studentService_1 = require("../services/studentService");
 class StudentController {
     static async getAllStudents(req, res) {
         try {
@@ -10,7 +10,7 @@ class StudentController {
             const search = req.query.search || "";
             console.log("Search request received:", { page, limit, search });
             console.log("Query params:", req.query);
-            const result = await studentService_js_1.StudentService.getAllStudents(page, limit, search);
+            const result = await studentService_1.StudentService.getAllStudents(page, limit, search);
             res.json({
                 success: true,
                 data: result.students,
@@ -43,7 +43,7 @@ class StudentController {
                 });
                 return;
             }
-            const student = await studentService_js_1.StudentService.getStudentById(id);
+            const student = await studentService_1.StudentService.getStudentById(id);
             if (!student) {
                 res.status(404).json({
                     success: false,
@@ -75,7 +75,7 @@ class StudentController {
                 });
                 return;
             }
-            const students = await studentService_js_1.StudentService.getStudentsByParent(parent_id);
+            const students = await studentService_1.StudentService.getStudentsByParent(parent_id);
             res.json({
                 success: true,
                 data: students,
@@ -101,7 +101,7 @@ class StudentController {
                 });
                 return;
             }
-            const students = await studentService_js_1.StudentService.getStudentsByGrade(grade_level);
+            const students = await studentService_1.StudentService.getStudentsByGrade(grade_level);
             res.json({
                 success: true,
                 data: students,
@@ -155,7 +155,7 @@ class StudentController {
                 });
                 return;
             }
-            const newStudent = await studentService_js_1.StudentService.createStudent({
+            const newStudent = await studentService_1.StudentService.createStudent({
                 parentId,
                 firstName: firstName.trim(),
                 lastName: lastName.trim(),
@@ -238,7 +238,7 @@ class StudentController {
                 updateData.dateOfBirth = dateOfBirth;
             if (gradeLevel !== undefined)
                 updateData.gradeLevel = gradeLevel.trim();
-            const updatedStudent = await studentService_js_1.StudentService.updateStudent(id, updateData);
+            const updatedStudent = await studentService_1.StudentService.updateStudent(id, updateData);
             if (!updatedStudent) {
                 res.status(404).json({
                     success: false,
@@ -271,7 +271,7 @@ class StudentController {
                 });
                 return;
             }
-            const deleted = await studentService_js_1.StudentService.deleteStudent(id);
+            const deleted = await studentService_1.StudentService.deleteStudent(id);
             if (!deleted) {
                 res.status(404).json({
                     success: false,
@@ -303,7 +303,7 @@ class StudentController {
                 });
                 return;
             }
-            const students = await studentService_js_1.StudentService.searchStudents(searchTerm);
+            const students = await studentService_1.StudentService.searchStudents(searchTerm);
             res.json({
                 success: true,
                 data: students,
@@ -322,7 +322,7 @@ class StudentController {
     }
     static async getStudentStats(req, res) {
         try {
-            const stats = await studentService_js_1.StudentService.getStudentStats();
+            const stats = await studentService_1.StudentService.getStudentStats();
             res.json({
                 success: true,
                 data: stats,

@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { CommentController } from "../controllers/commentController.js";
+import { CommentController } from "../controllers/commentController";
 import {
   authenticateToken,
   requireRole,
-} from "../middleware/authMiddleware.js";
+} from "../middleware/authMiddleware";
 
 const router = Router();
 

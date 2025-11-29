@@ -3,12 +3,12 @@ import {
   NewsService,
   CreateNewsData,
   UpdateNewsData,
-} from "../services/newsService.js";
+} from "../services/newsService";
 import {
   deleteImageFile,
   generateImageUrl,
-} from "../middleware/multerConfig.js";
-import { AuthenticatedRequest } from "../middleware/authMiddleware.js";
+} from "../middleware/multerConfig";
+import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import path from "path";
 import fs from "fs";
 

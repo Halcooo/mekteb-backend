@@ -4,8 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CommentService = void 0;
-const db_js_1 = __importDefault(require("../db.js"));
-const caseConverter_js_1 = require("../utils/caseConverter.js");
+const db_1 = __importDefault(require("../db"));
+const caseConverter_1 = require("../utils/caseConverter");
 class CommentService {
     // Get comments for a student on a specific date
     static async getStudentComments(studentId, date, authorRole) {
@@ -36,8 +36,8 @@ class CommentService {
             }
             query +=
                 " ORDER BY c.date DESC, c.created_at ASC, c.parent_comment_id IS NULL DESC";
-            const [rows] = await db_js_1.default.execute(query, params);
-            return rows.map((row) => (0, caseConverter_js_1.keysToCamelCase)(row));
+            const [rows] = await db_1.default.execute(query, params);
+            return rows.map((row) => (0, caseConverter_1.keysToCamelCase)(row));
         }
         catch (error) {
             console.error("Error fetching student comments:", error);
@@ -63,8 +63,8 @@ class CommentService {
         WHERE c.date = ?
         ORDER BY s.grade_level, s.last_name, s.first_name, c.created_at ASC
       `;
-            const [rows] = await db_js_1.default.execute(query, [date]);
-            return rows.map((row) => (0, caseConverter_js_1.keysToCamelCase)(row));
+            const [rows] = await db_1.default.execute(query, [date]);
+            return rows.map((row) => (0, caseConverter_1.keysToCamelCase)(row));
         }
         catch (error) {
             console.error("Error fetching daily comments:", error);
@@ -109,7 +109,7 @@ class CommentService {
         JOIN students s ON c.student_id = s.id
         ${whereClause}
       `;
-            const [countRows] = await db_js_1.default.execute(countQuery, params);
+            const [countRows] = await db_1.default.execute(countQuery, params);
             const total = countRows[0].total;
             // Get paginated results
             const offset = (page - 1) * limit;
@@ -130,8 +130,8 @@ class CommentService {
         ORDER BY c.date DESC, c.created_at ASC
         LIMIT ? OFFSET ?
       `;
-            const [rows] = await db_js_1.default.execute(query, [...params, limit, offset]);
-            const comments = rows.map((row) => (0, caseConverter_js_1.keysToCamelCase)(row));
+            const [rows] = await db_1.default.execute(query, [...params, limit, offset]);
+            const comments = rows.map((row) => (0, caseConverter_1.keysToCamelCase)(row));
             return { comments, total };
         }
         catch (error) {
@@ -142,13 +142,13 @@ class CommentService {
     // Create a new comment
     static async createComment(commentData) {
         try {
-            const dbData = (0, caseConverter_js_1.keysToSnakeCase)(commentData);
+            const dbData = (0, caseConverter_1.keysToSnakeCase)(commentData);
             const query = `
         INSERT INTO student_comments 
         (student_id, author_id, author_role, content, date, parent_comment_id)
         VALUES (?, ?, ?, ?, ?, ?)
       `;
-            const [result] = await db_js_1.default.execute(query, [
+            const [result] = await db_1.default.execute(query, [
                 commentData.studentId,
                 commentData.authorId,
                 commentData.authorRole,
@@ -182,11 +182,11 @@ class CommentService {
         JOIN students s ON c.student_id = s.id
         WHERE c.id = ?
       `;
-            const [rows] = await db_js_1.default.execute(query, [id]);
+            const [rows] = await db_1.default.execute(query, [id]);
             if (rows.length === 0) {
                 throw new Error("Comment not found");
             }
-            return (0, caseConverter_js_1.keysToCamelCase)(rows[0]);
+            return (0, caseConverter_1.keysToCamelCase)(rows[0]);
         }
         catch (error) {
             console.error("Error fetching comment by ID:", error);
@@ -206,7 +206,7 @@ class CommentService {
         SET content = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND author_id = ?
       `;
-            await db_js_1.default.execute(query, [updateData.content, id, authorId]);
+            await db_1.default.execute(query, [updateData.content, id, authorId]);
             return await this.getCommentById(id);
         }
         catch (error) {
@@ -223,7 +223,7 @@ class CommentService {
                 throw new Error("Unauthorized to delete this comment");
             }
             const query = "DELETE FROM student_comments WHERE id = ? AND author_id = ?";
-            const [result] = await db_js_1.default.execute(query, [id, authorId]);
+            const [result] = await db_1.default.execute(query, [id, authorId]);
             if (result.affectedRows === 0) {
                 throw new Error("Comment not found or not authorized");
             }
@@ -252,11 +252,11 @@ class CommentService {
         WHERE c.id = ? OR c.parent_comment_id = ?
         ORDER BY c.parent_comment_id IS NULL DESC, c.created_at ASC
       `;
-            const [rows] = await db_js_1.default.execute(query, [
+            const [rows] = await db_1.default.execute(query, [
                 parentCommentId,
                 parentCommentId,
             ]);
-            return rows.map((row) => (0, caseConverter_js_1.keysToCamelCase)(row));
+            return rows.map((row) => (0, caseConverter_1.keysToCamelCase)(row));
         }
         catch (error) {
             console.error("Error fetching comment thread:", error);

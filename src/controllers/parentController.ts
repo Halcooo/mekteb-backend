@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { ParentService } from "../services/parentService.js";
+import { ParentService } from "../services/parentService";
 
 export interface AuthenticatedRequest extends Request {
   user?: {

@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CommentController = void 0;
-const commentService_js_1 = require("../services/commentService.js");
+const commentService_1 = require("../services/commentService");
 class CommentController {
     // Get comments with filters
     static async getComments(req, res) {
@@ -17,7 +17,7 @@ class CommentController {
                 page: page ? parseInt(page) : 1,
                 limit: limit ? parseInt(limit) : 50,
             };
-            const { comments, total } = await commentService_js_1.CommentService.getComments(filters);
+            const { comments, total } = await commentService_1.CommentService.getComments(filters);
             const totalPages = Math.ceil(total / filters.limit);
             res.json({
                 success: true,
@@ -58,7 +58,7 @@ class CommentController {
                 // TODO: Add validation that parent is connected to this student
                 // This should check the parent-student connection table
             }
-            const comments = await commentService_js_1.CommentService.getStudentComments(studentId, date, authorRole);
+            const comments = await commentService_1.CommentService.getStudentComments(studentId, date, authorRole);
             res.json({
                 success: true,
                 data: comments,
@@ -92,7 +92,7 @@ class CommentController {
                 });
                 return;
             }
-            const comments = await commentService_js_1.CommentService.getDailyComments(date);
+            const comments = await commentService_1.CommentService.getDailyComments(date);
             res.json({
                 success: true,
                 data: comments,
@@ -159,7 +159,7 @@ class CommentController {
                     ? parseInt(parentCommentId)
                     : undefined,
             };
-            const comment = await commentService_js_1.CommentService.createComment(commentData);
+            const comment = await commentService_1.CommentService.createComment(commentData);
             res.status(201).json({
                 success: true,
                 data: comment,
@@ -203,7 +203,7 @@ class CommentController {
                 });
                 return;
             }
-            const updatedComment = await commentService_js_1.CommentService.updateComment(commentId, { content: content.trim() }, req.user.id);
+            const updatedComment = await commentService_1.CommentService.updateComment(commentId, { content: content.trim() }, req.user.id);
             res.json({
                 success: true,
                 data: updatedComment,
@@ -240,7 +240,7 @@ class CommentController {
                 });
                 return;
             }
-            await commentService_js_1.CommentService.deleteComment(commentId, req.user.id);
+            await commentService_1.CommentService.deleteComment(commentId, req.user.id);
             res.json({
                 success: true,
                 message: "Comment deleted successfully",
@@ -269,7 +269,7 @@ class CommentController {
                 });
                 return;
             }
-            const thread = await commentService_js_1.CommentService.getCommentThread(parentCommentId);
+            const thread = await commentService_1.CommentService.getCommentThread(parentCommentId);
             res.json({
                 success: true,
                 data: thread,

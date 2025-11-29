@@ -1,15 +1,15 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import healthRoutes from "./routes/healthRoutes.js";
-import newsRoutes from "./routes/newsRoutes.js";
-import studentRoutes from "./routes/studentRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
-import authRoutes from "./routes/authRoutes.js";
-import attendanceRoutes from "./routes/attendanceRoutes.js";
-import imageRoutes from "./routes/imageRoutes.js";
-import commentRoutes from "./routes/commentRoutes.js";
-import parentRoutes from "./routes/parentRoutes.js";
+import healthRoutes from "./routes/healthRoutes";
+import newsRoutes from "./routes/newsRoutes";
+import studentRoutes from "./routes/studentRoutes";
+import userRoutes from "./routes/userRoutes";
+import authRoutes from "./routes/authRoutes";
+import attendanceRoutes from "./routes/attendanceRoutes";
+import imageRoutes from "./routes/imageRoutes";
+import commentRoutes from "./routes/commentRoutes";
+import parentRoutes from "./routes/parentRoutes";
 
 dotenv.config();
 const app = express();

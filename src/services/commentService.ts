@@ -1,5 +1,5 @@
-import pool from "../db.js";
-import { keysToCamelCase, keysToSnakeCase } from "../utils/caseConverter.js";
+import pool from "../db";
+import { keysToCamelCase, keysToSnakeCase } from "../utils/caseConverter";
 
 export interface StudentComment {
   id: number;

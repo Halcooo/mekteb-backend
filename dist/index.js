@@ -6,15 +6,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
-const healthRoutes_js_1 = __importDefault(require("./routes/healthRoutes.js"));
-const newsRoutes_js_1 = __importDefault(require("./routes/newsRoutes.js"));
-const studentRoutes_js_1 = __importDefault(require("./routes/studentRoutes.js"));
-const userRoutes_js_1 = __importDefault(require("./routes/userRoutes.js"));
-const authRoutes_js_1 = __importDefault(require("./routes/authRoutes.js"));
-const attendanceRoutes_js_1 = __importDefault(require("./routes/attendanceRoutes.js"));
-const imageRoutes_js_1 = __importDefault(require("./routes/imageRoutes.js"));
-const commentRoutes_js_1 = __importDefault(require("./routes/commentRoutes.js"));
-const parentRoutes_js_1 = __importDefault(require("./routes/parentRoutes.js"));
+const healthRoutes_1 = __importDefault(require("./routes/healthRoutes"));
+const newsRoutes_1 = __importDefault(require("./routes/newsRoutes"));
+const studentRoutes_1 = __importDefault(require("./routes/studentRoutes"));
+const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
+const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
+const attendanceRoutes_1 = __importDefault(require("./routes/attendanceRoutes"));
+const imageRoutes_1 = __importDefault(require("./routes/imageRoutes"));
+const commentRoutes_1 = __importDefault(require("./routes/commentRoutes"));
+const parentRoutes_1 = __importDefault(require("./routes/parentRoutes"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 // CORS Configuration - Allow all origins for development
@@ -26,15 +26,15 @@ app.use((0, cors_1.default)(corsOptions));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 // API Routes
-app.use("/api/health", healthRoutes_js_1.default);
-app.use("/api/news", newsRoutes_js_1.default);
-app.use("/api/students", studentRoutes_js_1.default);
-app.use("/api/users", userRoutes_js_1.default);
-app.use("/api/auth", authRoutes_js_1.default);
-app.use("/api/images", imageRoutes_js_1.default);
-app.use("/api/attendance", attendanceRoutes_js_1.default);
-app.use("/api/comments", commentRoutes_js_1.default);
-app.use("/api/parent", parentRoutes_js_1.default);
+app.use("/api/health", healthRoutes_1.default);
+app.use("/api/news", newsRoutes_1.default);
+app.use("/api/students", studentRoutes_1.default);
+app.use("/api/users", userRoutes_1.default);
+app.use("/api/auth", authRoutes_1.default);
+app.use("/api/images", imageRoutes_1.default);
+app.use("/api/attendance", attendanceRoutes_1.default);
+app.use("/api/comments", commentRoutes_1.default);
+app.use("/api/parent", parentRoutes_1.default);
 // Root endpoint for basic server status
 app.get("/", (req, res) => {
     res.json({
