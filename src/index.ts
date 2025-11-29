@@ -18,6 +18,7 @@ import commentRoutes from "./routes/commentRoutes";
 import parentRoutes from "./routes/parentRoutes";
 
 const app = express();
+const API_PREFIX = "/backend/api";
 
 // CORS configuration
 const corsOptions = { origin: "*" }; // allow all origins for now
@@ -28,15 +29,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // API Routes
-app.use("/api/health", healthRoutes);
-app.use("/api/news", newsRoutes);
-app.use("/api/students", studentRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/images", imageRoutes);
-app.use("/api/attendance", attendanceRoutes);
-app.use("/api/comments", commentRoutes);
-app.use("/api/parent", parentRoutes);
+app.use(`${API_PREFIX}/health`, healthRoutes);
+app.use(`${API_PREFIX}/news`, newsRoutes);
+app.use(`${API_PREFIX}/students`, studentRoutes);
+app.use(`${API_PREFIX}/users`, userRoutes);
+app.use(`${API_PREFIX}/auth`, authRoutes);
+app.use(`${API_PREFIX}/attendance`, attendanceRoutes);
+app.use(`${API_PREFIX}/images`, imageRoutes);
+app.use(`${API_PREFIX}/comments`, commentRoutes);
+app.use(`${API_PREFIX}/parent`, parentRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {

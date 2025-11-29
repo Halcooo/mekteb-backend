@@ -19,6 +19,7 @@ const imageRoutes_1 = __importDefault(require("./routes/imageRoutes"));
 const commentRoutes_1 = __importDefault(require("./routes/commentRoutes"));
 const parentRoutes_1 = __importDefault(require("./routes/parentRoutes"));
 const app = (0, express_1.default)();
+const API_PREFIX = "/backend/api";
 // CORS configuration
 const corsOptions = { origin: "*" }; // allow all origins for now
 app.use((0, cors_1.default)(corsOptions));
@@ -26,15 +27,15 @@ app.use((0, cors_1.default)(corsOptions));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 // API Routes
-app.use("/api/health", healthRoutes_1.default);
-app.use("/api/news", newsRoutes_1.default);
-app.use("/api/students", studentRoutes_1.default);
-app.use("/api/users", userRoutes_1.default);
-app.use("/api/auth", authRoutes_1.default);
-app.use("/api/images", imageRoutes_1.default);
-app.use("/api/attendance", attendanceRoutes_1.default);
-app.use("/api/comments", commentRoutes_1.default);
-app.use("/api/parent", parentRoutes_1.default);
+app.use(`${API_PREFIX}/health`, healthRoutes_1.default);
+app.use(`${API_PREFIX}/news`, newsRoutes_1.default);
+app.use(`${API_PREFIX}/students`, studentRoutes_1.default);
+app.use(`${API_PREFIX}/users`, userRoutes_1.default);
+app.use(`${API_PREFIX}/auth`, authRoutes_1.default);
+app.use(`${API_PREFIX}/attendance`, attendanceRoutes_1.default);
+app.use(`${API_PREFIX}/images`, imageRoutes_1.default);
+app.use(`${API_PREFIX}/comments`, commentRoutes_1.default);
+app.use(`${API_PREFIX}/parent`, parentRoutes_1.default);
 // Root endpoint
 app.get("/", (req, res) => {
     res.json({
