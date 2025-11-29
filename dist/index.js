@@ -19,7 +19,7 @@ dotenv_1.default.config();
 const app = (0, express_1.default)();
 // CORS Configuration - Allow all origins for development
 const corsOptions = {
-    origin: "https://www.mekteb-pazaric.com",
+    origin: "*",
 };
 app.use((0, cors_1.default)(corsOptions));
 // Middleware

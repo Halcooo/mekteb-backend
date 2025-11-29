@@ -17,7 +17,7 @@ const app = express();
 // CORS Configuration - Allow all origins for development
 
 const corsOptions = {
-  origin: "https://www.mekteb-pazaric.com",
+  origin: "*",
 };
 app.use(cors(corsOptions));
 
