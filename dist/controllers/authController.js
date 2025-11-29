@@ -1,5 +1,8 @@
-import { AuthService, } from "../services/authService.js";
-export class AuthController {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AuthController = void 0;
+const authService_js_1 = require("../services/authService.js");
+class AuthController {
     static async register(req, res) {
         try {
             const { firstName, lastName, username, email, password, role = "student", } = req.body;
@@ -28,7 +31,7 @@ export class AuthController {
                 });
                 return;
             }
-            const result = await AuthService.register({
+            const result = await authService_js_1.AuthService.register({
                 firstName,
                 lastName,
                 username,
@@ -71,7 +74,7 @@ export class AuthController {
                 });
                 return;
             }
-            const result = await AuthService.login({ username, password });
+            const result = await authService_js_1.AuthService.login({ username, password });
             if (result.success) {
                 res.status(200).json({
                     success: true,
@@ -106,7 +109,7 @@ export class AuthController {
                 });
                 return;
             }
-            const result = await AuthService.refreshToken(refreshToken);
+            const result = await authService_js_1.AuthService.refreshToken(refreshToken);
             if (result.success) {
                 res.status(200).json({
                     success: true,
@@ -149,3 +152,4 @@ export class AuthController {
         }
     }
 }
+exports.AuthController = AuthController;

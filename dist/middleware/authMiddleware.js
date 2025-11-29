@@ -1,10 +1,13 @@
-import { JwtService } from "../services/jwtService.js";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.optionalAuth = exports.requireRole = exports.authenticateToken = void 0;
+const jwtService_js_1 = require("../services/jwtService.js");
 /**
  * Middleware to authenticate JWT tokens
  */
-export const authenticateToken = (req, res, next) => {
+const authenticateToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
-    const token = JwtService.extractTokenFromHeader(authHeader);
+    const token = jwtService_js_1.JwtService.extractTokenFromHeader(authHeader);
     if (!token) {
         res.status(401).json({
             success: false,
@@ -13,7 +16,7 @@ export const authenticateToken = (req, res, next) => {
         });
         return;
     }
-    const payload = JwtService.verifyAccessToken(token);
+    const payload = jwtService_js_1.JwtService.verifyAccessToken(token);
     if (!payload) {
         res.status(401).json({
             success: false,
@@ -31,10 +34,11 @@ export const authenticateToken = (req, res, next) => {
     };
     next();
 };
+exports.authenticateToken = authenticateToken;
 /**
  * Middleware to check if user has required role
  */
-export const requireRole = (roles) => {
+const requireRole = (roles) => {
     return (req, res, next) => {
         if (!req.user) {
             res.status(401).json({
@@ -56,14 +60,15 @@ export const requireRole = (roles) => {
         next();
     };
 };
+exports.requireRole = requireRole;
 /**
  * Optional authentication middleware - doesn't fail if no token
  */
-export const optionalAuth = (req, res, next) => {
+const optionalAuth = (req, res, next) => {
     const authHeader = req.headers.authorization;
-    const token = JwtService.extractTokenFromHeader(authHeader);
+    const token = jwtService_js_1.JwtService.extractTokenFromHeader(authHeader);
     if (token) {
-        const payload = JwtService.verifyAccessToken(token);
+        const payload = jwtService_js_1.JwtService.verifyAccessToken(token);
         if (payload) {
             req.user = {
                 userId: payload.userId,
@@ -75,3 +80,4 @@ export const optionalAuth = (req, res, next) => {
     }
     next();
 };
+exports.optionalAuth = optionalAuth;

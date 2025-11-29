@@ -1,11 +1,13 @@
-import { Router } from "express";
-import { UserController } from "../controllers/userController.js";
-const router = Router();
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const userController_js_1 = require("../controllers/userController.js");
+const router = (0, express_1.Router)();
 // GET /api/users - Get all users
-router.get("/", UserController.getAllUsers);
+router.get("/", userController_js_1.UserController.getAllUsers);
 // Add more user routes here as needed
 // router.get("/:id", UserController.getUserById);
 // router.post("/", UserController.createUser);
 // router.put("/:id", UserController.updateUser);
 // router.delete("/:id", UserController.deleteUser);
-export default router;
+exports.default = router;

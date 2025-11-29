@@ -1,16 +1,22 @@
-import pool from "../db.js";
-import { generateImageUrl } from "../middleware/multerConfig.js";
-import { keysToCamelCase, keysToSnakeCase } from "../utils/caseConverter.js";
-export class NewsService {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.NewsService = void 0;
+const db_js_1 = __importDefault(require("../db.js"));
+const multerConfig_js_1 = require("../middleware/multerConfig.js");
+const caseConverter_js_1 = require("../utils/caseConverter.js");
+class NewsService {
     static async getAllNews(page = 1, limit = 10) {
         try {
             const offset = (page - 1) * limit;
             // Get total count
-            const [countResult] = await pool.query("SELECT COUNT(*) as total FROM news");
+            const [countResult] = await db_js_1.default.query("SELECT COUNT(*) as total FROM news");
             const total = countResult[0].total;
             const totalPages = Math.ceil(total / limit);
             // Get paginated news
-            const [rows] = await pool.query(`SELECT n.*, u.username as author_username, CONCAT(u.first_name, ' ', u.last_name) as author_name 
+            const [rows] = await db_js_1.default.query(`SELECT n.*, u.username as author_username, CONCAT(u.first_name, ' ', u.last_name) as author_name 
          FROM news n 
          LEFT JOIN users u ON n.created_by = u.id 
          ORDER BY n.created_at DESC
@@ -19,7 +25,7 @@ export class NewsService {
             const newsWithImages = await Promise.all(rows.map(async (newsRow) => {
                 const images = await this.getNewsImages(newsRow.id);
                 // Convert database row to camelCase
-                const newsItem = keysToCamelCase(newsRow);
+                const newsItem = (0, caseConverter_js_1.keysToCamelCase)(newsRow);
                 return {
                     ...newsItem,
                     images,
@@ -45,14 +51,14 @@ export class NewsService {
     }
     static async getAllNewsSimple() {
         try {
-            const [rows] = await pool.query(`SELECT n.*, u.username as author_username, CONCAT(u.first_name, ' ', u.last_name) as author_name 
+            const [rows] = await db_js_1.default.query(`SELECT n.*, u.username as author_username, CONCAT(u.first_name, ' ', u.last_name) as author_name 
          FROM news n 
          LEFT JOIN users u ON n.created_by = u.id 
          ORDER BY n.created_at DESC`);
             // Convert to camelCase and add images
             const newsWithImages = await Promise.all(rows.map(async (newsRow) => {
                 const images = await this.getNewsImages(newsRow.id);
-                const newsItem = keysToCamelCase(newsRow);
+                const newsItem = (0, caseConverter_js_1.keysToCamelCase)(newsRow);
                 return {
                     ...newsItem,
                     images,
@@ -67,7 +73,7 @@ export class NewsService {
     }
     static async getNewsById(id) {
         try {
-            const [rows] = await pool.query(`SELECT n.*, u.username as author_username, CONCAT(u.first_name, ' ', u.last_name) as author_name 
+            const [rows] = await db_js_1.default.query(`SELECT n.*, u.username as author_username, CONCAT(u.first_name, ' ', u.last_name) as author_name 
          FROM news n 
          LEFT JOIN users u ON n.created_by = u.id 
          WHERE n.id = ?`, [id]);
@@ -75,7 +81,7 @@ export class NewsService {
                 return null;
             const newsRow = rows[0];
             const images = await this.getNewsImages(id);
-            const newsItem = keysToCamelCase(newsRow);
+            const newsItem = (0, caseConverter_js_1.keysToCamelCase)(newsRow);
             return {
                 ...newsItem,
                 images,
@@ -89,8 +95,8 @@ export class NewsService {
     static async createNews(newsData) {
         try {
             // Convert camelCase to snake_case for database
-            const dbData = keysToSnakeCase(newsData);
-            const [result] = await pool.query(`INSERT INTO news (title, subtitle, text, created_by, created_at) 
+            const dbData = (0, caseConverter_js_1.keysToSnakeCase)(newsData);
+            const [result] = await db_js_1.default.query(`INSERT INTO news (title, subtitle, text, created_by, created_at) 
          VALUES (?, ?, ?, ?, NOW())`, [dbData.title, dbData.subtitle || null, dbData.text, dbData.created_by]);
             const insertId = result.insertId;
             const createdNews = await this.getNewsById(insertId);
@@ -107,12 +113,12 @@ export class NewsService {
     static async updateNews(id, updateData) {
         try {
             // Convert camelCase to snake_case for database
-            const dbData = keysToSnakeCase(updateData);
+            const dbData = (0, caseConverter_js_1.keysToSnakeCase)(updateData);
             const fields = Object.keys(dbData)
                 .map((key) => `${key} = ?`)
                 .join(", ");
             const values = [...Object.values(dbData), id];
-            await pool.query(`UPDATE news SET ${fields} WHERE id = ?`, values);
+            await db_js_1.default.query(`UPDATE news SET ${fields} WHERE id = ?`, values);
             return this.getNewsById(id);
         }
         catch (error) {
@@ -125,7 +131,7 @@ export class NewsService {
             // First delete associated images
             await this.deleteAllNewsImages(id);
             // Then delete the news item
-            const [result] = await pool.query("DELETE FROM news WHERE id = ?", [id]);
+            const [result] = await db_js_1.default.query("DELETE FROM news WHERE id = ?", [id]);
             return result.affectedRows > 0;
         }
         catch (error) {
@@ -135,7 +141,7 @@ export class NewsService {
     }
     static async getNewsByAuthor(createdBy) {
         try {
-            const [rows] = await pool.query(`SELECT n.*, u.username as author_username, CONCAT(u.first_name, ' ', u.last_name) as author_name 
+            const [rows] = await db_js_1.default.query(`SELECT n.*, u.username as author_username, CONCAT(u.first_name, ' ', u.last_name) as author_name 
          FROM news n 
          LEFT JOIN users u ON n.created_by = u.id 
          WHERE n.created_by = ? 
@@ -143,7 +149,7 @@ export class NewsService {
             // Convert to camelCase and add images
             const newsWithImages = await Promise.all(rows.map(async (newsRow) => {
                 const images = await this.getNewsImages(newsRow.id);
-                const newsItem = keysToCamelCase(newsRow);
+                const newsItem = (0, caseConverter_js_1.keysToCamelCase)(newsRow);
                 return {
                     ...newsItem,
                     images,
@@ -158,13 +164,13 @@ export class NewsService {
     }
     static async getNewsImages(newsId) {
         try {
-            const [rows] = await pool.query("SELECT * FROM news_images WHERE news_id = ? ORDER BY id ASC", [newsId]);
+            const [rows] = await db_js_1.default.query("SELECT * FROM news_images WHERE news_id = ? ORDER BY id ASC", [newsId]);
             // Convert to camelCase and add URL
             return rows.map((imageRow) => {
-                const image = keysToCamelCase(imageRow);
+                const image = (0, caseConverter_js_1.keysToCamelCase)(imageRow);
                 return {
                     ...image,
-                    url: generateImageUrl(imageRow.image_path),
+                    url: (0, multerConfig_js_1.generateImageUrl)(imageRow.image_path),
                 };
             });
         }
@@ -175,18 +181,18 @@ export class NewsService {
     }
     static async addNewsImage(newsId, imagePath, originalName, fileSize, mimeType) {
         try {
-            const [result] = await pool.query(`INSERT INTO news_images (news_id, image_path, original_name, file_size, mime_type, uploaded_at) 
+            const [result] = await db_js_1.default.query(`INSERT INTO news_images (news_id, image_path, original_name, file_size, mime_type, uploaded_at) 
          VALUES (?, ?, ?, ?, ?, NOW())`, [newsId, imagePath, originalName, fileSize, mimeType]);
             const insertId = result.insertId;
-            const [rows] = await pool.query("SELECT * FROM news_images WHERE id = ?", [insertId]);
+            const [rows] = await db_js_1.default.query("SELECT * FROM news_images WHERE id = ?", [insertId]);
             if (rows.length === 0) {
                 throw new Error("Failed to retrieve created image");
             }
             const imageRow = rows[0];
-            const image = keysToCamelCase(imageRow);
+            const image = (0, caseConverter_js_1.keysToCamelCase)(imageRow);
             return {
                 ...image,
-                url: generateImageUrl(imageRow.image_path),
+                url: (0, multerConfig_js_1.generateImageUrl)(imageRow.image_path),
             };
         }
         catch (error) {
@@ -196,7 +202,7 @@ export class NewsService {
     }
     static async deleteNewsImage(imageId) {
         try {
-            const [result] = await pool.query("DELETE FROM news_images WHERE id = ?", [imageId]);
+            const [result] = await db_js_1.default.query("DELETE FROM news_images WHERE id = ?", [imageId]);
             return result.affectedRows > 0;
         }
         catch (error) {
@@ -206,7 +212,7 @@ export class NewsService {
     }
     static async deleteAllNewsImages(newsId) {
         try {
-            const [result] = await pool.query("DELETE FROM news_images WHERE news_id = ?", [newsId]);
+            const [result] = await db_js_1.default.query("DELETE FROM news_images WHERE news_id = ?", [newsId]);
             return result.affectedRows >= 0;
         }
         catch (error) {
@@ -216,7 +222,7 @@ export class NewsService {
     }
     static async getImageById(imageId) {
         try {
-            const [rows] = await pool.query("SELECT * FROM news_images WHERE id = ?", [imageId]);
+            const [rows] = await db_js_1.default.query("SELECT * FROM news_images WHERE id = ?", [imageId]);
             return rows.length > 0 ? rows[0] : null;
         }
         catch (error) {
@@ -226,7 +232,7 @@ export class NewsService {
     }
     static async getImageByPath(imagePath) {
         try {
-            const [rows] = await pool.query("SELECT * FROM news_images WHERE image_path = ?", [imagePath]);
+            const [rows] = await db_js_1.default.query("SELECT * FROM news_images WHERE image_path = ?", [imagePath]);
             return rows.length > 0 ? rows[0] : null;
         }
         catch (error) {
@@ -235,3 +241,4 @@ export class NewsService {
         }
     }
 }
+exports.NewsService = NewsService;

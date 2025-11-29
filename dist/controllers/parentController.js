@@ -1,5 +1,8 @@
-import { ParentService } from "../services/parentService.js";
-export class ParentController {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ParentController = void 0;
+const parentService_js_1 = require("../services/parentService.js");
+class ParentController {
     // Connect to student using parent key
     static async connectToStudent(req, res) {
         try {
@@ -17,7 +20,7 @@ export class ParentController {
                     message: "Parent key is required",
                 });
             }
-            const result = await ParentService.connectToStudent(userId, parentKey);
+            const result = await parentService_js_1.ParentService.connectToStudent(userId, parentKey);
             if (!result.success) {
                 return res.status(400).json(result);
             }
@@ -41,7 +44,7 @@ export class ParentController {
                     message: "User not authenticated",
                 });
             }
-            const students = await ParentService.getConnectedStudents(userId);
+            const students = await parentService_js_1.ParentService.getConnectedStudents(userId);
             res.json({
                 success: true,
                 data: students,
@@ -72,7 +75,7 @@ export class ParentController {
                     message: "Student ID is required",
                 });
             }
-            const result = await ParentService.disconnectFromStudent(userId, parseInt(studentId));
+            const result = await parentService_js_1.ParentService.disconnectFromStudent(userId, parseInt(studentId));
             res.json(result);
         }
         catch (error) {
@@ -84,3 +87,4 @@ export class ParentController {
         }
     }
 }
+exports.ParentController = ParentController;

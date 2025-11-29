@@ -1,5 +1,8 @@
-import { StudentService, } from "../services/studentService.js";
-export class StudentController {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.StudentController = void 0;
+const studentService_js_1 = require("../services/studentService.js");
+class StudentController {
     static async getAllStudents(req, res) {
         try {
             const page = parseInt(req.query.page) || 1;
@@ -7,7 +10,7 @@ export class StudentController {
             const search = req.query.search || "";
             console.log("Search request received:", { page, limit, search });
             console.log("Query params:", req.query);
-            const result = await StudentService.getAllStudents(page, limit, search);
+            const result = await studentService_js_1.StudentService.getAllStudents(page, limit, search);
             res.json({
                 success: true,
                 data: result.students,
@@ -40,7 +43,7 @@ export class StudentController {
                 });
                 return;
             }
-            const student = await StudentService.getStudentById(id);
+            const student = await studentService_js_1.StudentService.getStudentById(id);
             if (!student) {
                 res.status(404).json({
                     success: false,
@@ -72,7 +75,7 @@ export class StudentController {
                 });
                 return;
             }
-            const students = await StudentService.getStudentsByParent(parent_id);
+            const students = await studentService_js_1.StudentService.getStudentsByParent(parent_id);
             res.json({
                 success: true,
                 data: students,
@@ -98,7 +101,7 @@ export class StudentController {
                 });
                 return;
             }
-            const students = await StudentService.getStudentsByGrade(grade_level);
+            const students = await studentService_js_1.StudentService.getStudentsByGrade(grade_level);
             res.json({
                 success: true,
                 data: students,
@@ -152,7 +155,7 @@ export class StudentController {
                 });
                 return;
             }
-            const newStudent = await StudentService.createStudent({
+            const newStudent = await studentService_js_1.StudentService.createStudent({
                 parentId,
                 firstName: firstName.trim(),
                 lastName: lastName.trim(),
@@ -235,7 +238,7 @@ export class StudentController {
                 updateData.dateOfBirth = dateOfBirth;
             if (gradeLevel !== undefined)
                 updateData.gradeLevel = gradeLevel.trim();
-            const updatedStudent = await StudentService.updateStudent(id, updateData);
+            const updatedStudent = await studentService_js_1.StudentService.updateStudent(id, updateData);
             if (!updatedStudent) {
                 res.status(404).json({
                     success: false,
@@ -268,7 +271,7 @@ export class StudentController {
                 });
                 return;
             }
-            const deleted = await StudentService.deleteStudent(id);
+            const deleted = await studentService_js_1.StudentService.deleteStudent(id);
             if (!deleted) {
                 res.status(404).json({
                     success: false,
@@ -300,7 +303,7 @@ export class StudentController {
                 });
                 return;
             }
-            const students = await StudentService.searchStudents(searchTerm);
+            const students = await studentService_js_1.StudentService.searchStudents(searchTerm);
             res.json({
                 success: true,
                 data: students,
@@ -319,7 +322,7 @@ export class StudentController {
     }
     static async getStudentStats(req, res) {
         try {
-            const stats = await StudentService.getStudentStats();
+            const stats = await studentService_js_1.StudentService.getStudentStats();
             res.json({
                 success: true,
                 data: stats,
@@ -335,3 +338,4 @@ export class StudentController {
         }
     }
 }
+exports.StudentController = StudentController;

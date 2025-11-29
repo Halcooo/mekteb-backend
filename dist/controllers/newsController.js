@@ -1,8 +1,14 @@
-import { NewsService, } from "../services/newsService.js";
-import { deleteImageFile, generateImageUrl, } from "../middleware/multerConfig.js";
-import path from "path";
-import fs from "fs";
-export class NewsController {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.NewsController = void 0;
+const newsService_js_1 = require("../services/newsService.js");
+const multerConfig_js_1 = require("../middleware/multerConfig.js");
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
+class NewsController {
     static async getAllNews(req, res) {
         try {
             const page = parseInt(req.query.page) || 1;
@@ -15,7 +21,7 @@ export class NewsController {
                 });
                 return;
             }
-            const result = await NewsService.getAllNews(page, limit);
+            const result = await newsService_js_1.NewsService.getAllNews(page, limit);
             res.json(result);
         }
         catch (error) {
@@ -37,7 +43,7 @@ export class NewsController {
                 });
                 return;
             }
-            const news = await NewsService.getNewsById(id);
+            const news = await newsService_js_1.NewsService.getNewsById(id);
             if (!news) {
                 res.status(404).json({
                     success: false,
@@ -72,7 +78,7 @@ export class NewsController {
             }
             // Get user ID from JWT token (set by authenticateToken middleware)
             const created_by = req.user.userId;
-            const newNews = await NewsService.createNews({
+            const newNews = await newsService_js_1.NewsService.createNews({
                 title,
                 text,
                 createdBy: created_by,
@@ -112,7 +118,7 @@ export class NewsController {
                 });
                 return;
             }
-            const updatedNews = await NewsService.updateNews(id, { title, text });
+            const updatedNews = await newsService_js_1.NewsService.updateNews(id, { title, text });
             if (!updatedNews) {
                 res.status(404).json({
                     success: false,
@@ -145,7 +151,7 @@ export class NewsController {
                 });
                 return;
             }
-            const deleted = await NewsService.deleteNews(id);
+            const deleted = await newsService_js_1.NewsService.deleteNews(id);
             if (!deleted) {
                 res.status(404).json({
                     success: false,
@@ -177,7 +183,7 @@ export class NewsController {
                 });
                 return;
             }
-            const news = await NewsService.getNewsByAuthor(created_by);
+            const news = await newsService_js_1.NewsService.getNewsByAuthor(created_by);
             res.json({
                 success: true,
                 data: news,
@@ -205,7 +211,7 @@ export class NewsController {
                 return;
             }
             // Check if news exists
-            const news = await NewsService.getNewsById(newsId);
+            const news = await newsService_js_1.NewsService.getNewsById(newsId);
             if (!news) {
                 res.status(404).json({
                     success: false,
@@ -224,11 +230,11 @@ export class NewsController {
             const uploadedImages = [];
             for (const file of files) {
                 const relativePath = `uploads/news-images/${file.filename}`;
-                const imageId = await NewsService.addNewsImage(newsId, relativePath, file.originalname, file.size, file.mimetype);
+                const imageId = await newsService_js_1.NewsService.addNewsImage(newsId, relativePath, file.originalname, file.size, file.mimetype);
                 uploadedImages.push({
                     id: imageId,
                     path: relativePath,
-                    url: generateImageUrl(relativePath),
+                    url: (0, multerConfig_js_1.generateImageUrl)(relativePath),
                     originalName: file.originalname,
                     size: file.size,
                     mimeType: file.mimetype,
@@ -259,10 +265,10 @@ export class NewsController {
                 });
                 return;
             }
-            const images = await NewsService.getNewsImages(newsId);
+            const images = await newsService_js_1.NewsService.getNewsImages(newsId);
             const imagesWithUrls = images.map((image) => ({
                 ...image,
-                url: generateImageUrl(image.imagePath),
+                url: (0, multerConfig_js_1.generateImageUrl)(image.imagePath),
             }));
             res.json({
                 success: true,
@@ -289,7 +295,7 @@ export class NewsController {
                 return;
             }
             // Get image info before deletion
-            const image = await NewsService.getImageById(imageId);
+            const image = await newsService_js_1.NewsService.getImageById(imageId);
             if (!image) {
                 res.status(404).json({
                     success: false,
@@ -298,7 +304,7 @@ export class NewsController {
                 return;
             }
             // Delete from database
-            const deleted = await NewsService.deleteNewsImage(imageId);
+            const deleted = await newsService_js_1.NewsService.deleteNewsImage(imageId);
             if (!deleted) {
                 res.status(404).json({
                     success: false,
@@ -307,7 +313,7 @@ export class NewsController {
                 return;
             }
             // Delete file from filesystem
-            deleteImageFile(image.image_path);
+            (0, multerConfig_js_1.deleteImageFile)(image.image_path);
             res.json({
                 success: true,
                 message: "Image deleted successfully",
@@ -325,9 +331,9 @@ export class NewsController {
     static async serveImage(req, res) {
         try {
             const fileName = req.params.fileName;
-            const imagePath = path.join(process.cwd(), "uploads", "news-images", fileName);
+            const imagePath = path_1.default.join(process.cwd(), "uploads", "news-images", fileName);
             // Check if file exists
-            if (!fs.existsSync(imagePath)) {
+            if (!fs_1.default.existsSync(imagePath)) {
                 res.status(404).json({
                     success: false,
                     error: "Image not found",
@@ -336,7 +342,7 @@ export class NewsController {
             }
             // Get image info from database for security
             const relativeImagePath = `uploads/news-images/${fileName}`;
-            const imageInfo = await NewsService.getImageByPath(relativeImagePath);
+            const imageInfo = await newsService_js_1.NewsService.getImageByPath(relativeImagePath);
             if (!imageInfo) {
                 res.status(404).json({
                     success: false,
@@ -360,3 +366,4 @@ export class NewsController {
         }
     }
 }
+exports.NewsController = NewsController;

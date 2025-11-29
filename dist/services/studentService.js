@@ -1,5 +1,11 @@
-import pool from "../db.js";
-import { generateUniqueParentKey } from "../utils/parentKeyGenerator.js";
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.StudentService = void 0;
+const db_js_1 = __importDefault(require("../db.js"));
+const parentKeyGenerator_js_1 = require("../utils/parentKeyGenerator.js");
 /**
  * StudentService - Handles all student CRUD operations and related business logic
  *
@@ -9,7 +15,7 @@ import { generateUniqueParentKey } from "../utils/parentKeyGenerator.js";
  * - Parent key validation and lookup
  * - Database to API format conversion with camelCase/snake_case handling
  */
-export class StudentService {
+class StudentService {
     /**
      * Checks if a parent key already exists in the database
      * @param parentKey - The parent key string to validate
@@ -18,7 +24,7 @@ export class StudentService {
      */
     static async parentKeyExists(parentKey) {
         try {
-            const [rows] = await pool.query("SELECT COUNT(*) as count FROM students WHERE parent_key = ?", [parentKey]);
+            const [rows] = await db_js_1.default.query("SELECT COUNT(*) as count FROM students WHERE parent_key = ?", [parentKey]);
             return rows[0].count > 0;
         }
         catch (error) {
@@ -87,7 +93,7 @@ export class StudentService {
          ${whereClause}`;
             console.log("Count Query:", countQuery);
             console.log("Count Query Params:", queryParams);
-            const [countRows] = await pool.query(countQuery, queryParams);
+            const [countRows] = await db_js_1.default.query(countQuery, queryParams);
             const totalCount = countRows[0].total;
             const totalPages = Math.ceil(totalCount / limit);
             // Get paginated results
@@ -102,7 +108,7 @@ export class StudentService {
             const selectParams = [...queryParams, limit, offset];
             console.log("Select Query:", selectQuery);
             console.log("Select Query Params:", selectParams);
-            const [rows] = await pool.query(selectQuery, selectParams);
+            const [rows] = await db_js_1.default.query(selectQuery, selectParams);
             return {
                 students: rows.map((row) => StudentService.mapDbToApi(row)),
                 totalCount,
@@ -116,7 +122,7 @@ export class StudentService {
     }
     static async getStudentById(id) {
         try {
-            const [rows] = await pool.query(`SELECT s.*, 
+            const [rows] = await db_js_1.default.query(`SELECT s.*, 
          p.username as parent_name,
          p.username as parent_username
          FROM students s 
@@ -131,7 +137,7 @@ export class StudentService {
     }
     static async getStudentsByParent(parent_id) {
         try {
-            const [rows] = await pool.query(`SELECT s.*, 
+            const [rows] = await db_js_1.default.query(`SELECT s.*, 
          p.username as parent_name,
          p.username as parent_username
          FROM students s 
@@ -147,7 +153,7 @@ export class StudentService {
     }
     static async getStudentsByGrade(grade_level) {
         try {
-            const [rows] = await pool.query(`SELECT s.*, 
+            const [rows] = await db_js_1.default.query(`SELECT s.*, 
          p.username as parent_name,
          p.username as parent_username
          FROM students s 
@@ -166,8 +172,8 @@ export class StudentService {
             // Convert camelCase to underscore_case for database
             const { parentId, firstName, lastName, dateOfBirth, gradeLevel } = studentData;
             // Generate unique parent key
-            const parentKey = await generateUniqueParentKey(StudentService.parentKeyExists);
-            const [result] = await pool.query("INSERT INTO students (parent_id, first_name, last_name, date_of_birth, grade_level, parent_key, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())", [
+            const parentKey = await (0, parentKeyGenerator_js_1.generateUniqueParentKey)(StudentService.parentKeyExists);
+            const [result] = await db_js_1.default.query("INSERT INTO students (parent_id, first_name, last_name, date_of_birth, grade_level, parent_key, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())", [
                 parentId || null,
                 firstName,
                 lastName,
@@ -221,7 +227,7 @@ export class StudentService {
                 throw new Error("No fields to update");
             }
             updateValues.push(id);
-            const [result] = await pool.query(`UPDATE students SET ${updateFields.join(", ")} WHERE id = ?`, updateValues);
+            const [result] = await db_js_1.default.query(`UPDATE students SET ${updateFields.join(", ")} WHERE id = ?`, updateValues);
             const updateResult = result;
             if (updateResult.affectedRows === 0) {
                 return null;
@@ -238,7 +244,7 @@ export class StudentService {
     }
     static async deleteStudent(id) {
         try {
-            const [result] = await pool.query("DELETE FROM students WHERE id = ?", [
+            const [result] = await db_js_1.default.query("DELETE FROM students WHERE id = ?", [
                 id,
             ]);
             const deleteResult = result;
@@ -252,7 +258,7 @@ export class StudentService {
     static async searchStudents(searchTerm) {
         try {
             const searchPattern = `%${searchTerm}%`;
-            const [rows] = await pool.query(`SELECT s.*, 
+            const [rows] = await db_js_1.default.query(`SELECT s.*, 
          p.username as parent_name,
          p.username as parent_username
          FROM students s 
@@ -271,11 +277,11 @@ export class StudentService {
     }
     static async getStudentStats() {
         try {
-            const [gradeStats] = await pool.query(`SELECT grade_level, COUNT(*) as count 
+            const [gradeStats] = await db_js_1.default.query(`SELECT grade_level, COUNT(*) as count 
          FROM students 
          GROUP BY grade_level 
          ORDER BY grade_level`);
-            const [totalCount] = await pool.query("SELECT COUNT(*) as total FROM students");
+            const [totalCount] = await db_js_1.default.query("SELECT COUNT(*) as total FROM students");
             return {
                 totalStudents: totalCount[0].total,
                 byGrade: gradeStats,
@@ -287,3 +293,4 @@ export class StudentService {
         }
     }
 }
+exports.StudentService = StudentService;

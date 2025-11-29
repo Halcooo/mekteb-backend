@@ -1,10 +1,16 @@
-import bcrypt from "bcrypt";
-import { UserService } from "./userService.js";
-import { JwtService } from "./jwtService.js";
-export class AuthService {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AuthService = void 0;
+const bcrypt_1 = __importDefault(require("bcrypt"));
+const userService_js_1 = require("./userService.js");
+const jwtService_js_1 = require("./jwtService.js");
+class AuthService {
     static async hashPassword(password) {
         try {
-            return await bcrypt.hash(password, this.SALT_ROUNDS);
+            return await bcrypt_1.default.hash(password, this.SALT_ROUNDS);
         }
         catch (error) {
             console.error("Error hashing password:", error);
@@ -13,7 +19,7 @@ export class AuthService {
     }
     static async comparePassword(password, hashedPassword) {
         try {
-            return await bcrypt.compare(password, hashedPassword);
+            return await bcrypt_1.default.compare(password, hashedPassword);
         }
         catch (error) {
             console.error("Error comparing passwords:", error);
@@ -24,14 +30,14 @@ export class AuthService {
         try {
             const { firstName, lastName, username, email, password, role = "user", } = userData;
             // Check if user already exists (email or username)
-            const existingUserByEmail = await UserService.getUserByEmail(email);
+            const existingUserByEmail = await userService_js_1.UserService.getUserByEmail(email);
             if (existingUserByEmail) {
                 return {
                     success: false,
                     message: "User with this email already exists",
                 };
             }
-            const existingUserByUsername = await UserService.getUserByUsername(username);
+            const existingUserByUsername = await userService_js_1.UserService.getUserByUsername(username);
             if (existingUserByUsername) {
                 return {
                     success: false,
@@ -49,11 +55,11 @@ export class AuthService {
                 first_name: firstName,
                 last_name: lastName,
             };
-            const newUser = await UserService.createUser(createUserData);
+            const newUser = await userService_js_1.UserService.createUser(createUserData);
             // Remove password from response
             const { password: _, ...userWithoutPassword } = newUser;
             // Generate JWT tokens
-            const { accessToken, refreshToken } = JwtService.generateTokenPair({
+            const { accessToken, refreshToken } = jwtService_js_1.JwtService.generateTokenPair({
                 userId: newUser.id,
                 username: newUser.username,
                 email: newUser.email,
@@ -79,7 +85,7 @@ export class AuthService {
         try {
             const { username, password } = loginData;
             // Find user by username
-            const user = await UserService.getUserByUsername(username);
+            const user = await userService_js_1.UserService.getUserByUsername(username);
             if (!user) {
                 return {
                     success: false,
@@ -97,7 +103,7 @@ export class AuthService {
             // Remove password from response
             const { password: _, ...userWithoutPassword } = user;
             // Generate JWT tokens
-            const { accessToken, refreshToken } = JwtService.generateTokenPair({
+            const { accessToken, refreshToken } = jwtService_js_1.JwtService.generateTokenPair({
                 userId: user.id,
                 username: user.username,
                 email: user.email,
@@ -122,7 +128,7 @@ export class AuthService {
     static async refreshToken(refreshToken) {
         try {
             // Verify refresh token
-            const payload = JwtService.verifyRefreshToken(refreshToken);
+            const payload = jwtService_js_1.JwtService.verifyRefreshToken(refreshToken);
             if (!payload) {
                 return {
                     success: false,
@@ -130,7 +136,7 @@ export class AuthService {
                 };
             }
             // Get user data
-            const user = await UserService.getUserById(payload.userId);
+            const user = await userService_js_1.UserService.getUserById(payload.userId);
             if (!user) {
                 return {
                     success: false,
@@ -138,7 +144,7 @@ export class AuthService {
                 };
             }
             // Generate new token pair
-            const tokens = JwtService.generateTokenPair({
+            const tokens = jwtService_js_1.JwtService.generateTokenPair({
                 userId: user.id,
                 username: user.username,
                 email: user.email,
@@ -163,4 +169,5 @@ export class AuthService {
         }
     }
 }
+exports.AuthService = AuthService;
 AuthService.SALT_ROUNDS = 12;

@@ -1,8 +1,11 @@
-import { HealthService } from "../services/healthService.js";
-export class HealthController {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HealthController = void 0;
+const healthService_js_1 = require("../services/healthService.js");
+class HealthController {
     static async checkHealth(req, res) {
         try {
-            const time = await HealthService.checkDatabaseConnection();
+            const time = await healthService_js_1.HealthService.checkDatabaseConnection();
             res.json({
                 message: "DB Connected!",
                 time: time,
@@ -19,3 +22,4 @@ export class HealthController {
         }
     }
 }
+exports.HealthController = HealthController;

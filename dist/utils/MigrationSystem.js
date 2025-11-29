@@ -1,13 +1,18 @@
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MigrationSystem = void 0;
+const promises_1 = __importDefault(require("fs/promises"));
+const path_1 = __importDefault(require("path"));
+const __filename = path_1.default.resolve();
+const __dirname = path_1.default.dirname(__filename);
 // Migration system for MySQL database
-export class MigrationSystem {
+class MigrationSystem {
     constructor(pool) {
         this.pool = pool;
-        this.migrationsDir = path.join(__dirname, "../../migrations");
+        this.migrationsDir = path_1.default.join(__dirname, "../../migrations");
     }
     // Initialize migrations table
     async initMigrations() {
@@ -30,7 +35,7 @@ export class MigrationSystem {
     // Get pending migrations
     async getPendingMigrations() {
         const executed = await this.getExecutedMigrations();
-        const files = await fs.readdir(this.migrationsDir);
+        const files = await promises_1.default.readdir(this.migrationsDir);
         const migrationFiles = files
             .filter((file) => file.endsWith(".sql") && !file.includes(".rollback."))
             .sort();
@@ -38,8 +43,8 @@ export class MigrationSystem {
     }
     // Execute a single migration
     async executeMigration(filename) {
-        const filePath = path.join(this.migrationsDir, filename);
-        const sql = await fs.readFile(filePath, "utf-8");
+        const filePath = path_1.default.join(this.migrationsDir, filename);
+        const sql = await promises_1.default.readFile(filePath, "utf-8");
         // Calculate checksum for integrity
         const checksum = this.calculateChecksum(sql);
         // Begin transaction
@@ -98,9 +103,9 @@ export class MigrationSystem {
         console.log(`⚠️  Rolling back migration: ${lastMigration.filename}`);
         // Look for rollback file
         const rollbackFile = lastMigration.filename.replace(".sql", ".rollback.sql");
-        const rollbackPath = path.join(this.migrationsDir, rollbackFile);
+        const rollbackPath = path_1.default.join(this.migrationsDir, rollbackFile);
         try {
-            const rollbackSql = await fs.readFile(rollbackPath, "utf-8");
+            const rollbackSql = await promises_1.default.readFile(rollbackPath, "utf-8");
             const connection = await this.pool.getConnection();
             try {
                 await connection.beginTransaction();
@@ -139,3 +144,4 @@ export class MigrationSystem {
         }
     }
 }
+exports.MigrationSystem = MigrationSystem;

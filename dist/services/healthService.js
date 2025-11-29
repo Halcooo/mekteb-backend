@@ -1,8 +1,14 @@
-import pool from "../db.js";
-export class HealthService {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HealthService = void 0;
+const db_js_1 = __importDefault(require("../db.js"));
+class HealthService {
     static async checkDatabaseConnection() {
         try {
-            const [rows] = await pool.query("SELECT NOW() AS time");
+            const [rows] = await db_js_1.default.query("SELECT NOW() AS time");
             const timeRow = rows[0];
             return timeRow.time;
         }
@@ -12,3 +18,4 @@ export class HealthService {
         }
     }
 }
+exports.HealthService = HealthService;

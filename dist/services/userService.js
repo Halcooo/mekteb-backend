@@ -1,8 +1,14 @@
-import pool from "../db.js";
-export class UserService {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.UserService = void 0;
+const db_js_1 = __importDefault(require("../db.js"));
+class UserService {
     static async getAllUsers() {
         try {
-            const [rows] = await pool.query("SELECT * FROM users");
+            const [rows] = await db_js_1.default.query("SELECT * FROM users");
             return rows;
         }
         catch (error) {
@@ -12,7 +18,7 @@ export class UserService {
     }
     static async getUserById(id) {
         try {
-            const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [id]);
+            const [rows] = await db_js_1.default.query("SELECT * FROM users WHERE id = ?", [id]);
             return rows[0] || null;
         }
         catch (error) {
@@ -22,7 +28,7 @@ export class UserService {
     }
     static async getUserByEmail(email) {
         try {
-            const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+            const [rows] = await db_js_1.default.query("SELECT * FROM users WHERE email = ?", [email]);
             return rows[0] || null;
         }
         catch (error) {
@@ -32,7 +38,7 @@ export class UserService {
     }
     static async getUserByUsername(username) {
         try {
-            const [rows] = await pool.query("SELECT * FROM users WHERE username = ?", [username]);
+            const [rows] = await db_js_1.default.query("SELECT * FROM users WHERE username = ?", [username]);
             return rows[0] || null;
         }
         catch (error) {
@@ -43,7 +49,7 @@ export class UserService {
     static async createUser(userData) {
         try {
             const { username, email, password, role, first_name, last_name } = userData;
-            const [result] = await pool.query("INSERT INTO users (username, email, password, role, first_name, last_name, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())", [username, email, password, role, first_name, last_name]);
+            const [result] = await db_js_1.default.query("INSERT INTO users (username, email, password, role, first_name, last_name, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())", [username, email, password, role, first_name, last_name]);
             const insertResult = result;
             const newUser = await UserService.getUserById(insertResult.insertId);
             if (!newUser) {
@@ -60,3 +66,4 @@ export class UserService {
         }
     }
 }
+exports.UserService = UserService;

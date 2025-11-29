@@ -1,11 +1,17 @@
-import pool from "../db.js";
-import { StudentService } from "./studentService.js";
-export class ParentService {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ParentService = void 0;
+const db_js_1 = __importDefault(require("../db.js"));
+const studentService_js_1 = require("./studentService.js");
+class ParentService {
     // Connect parent to student using parent key
     static async connectToStudent(userId, parentKey) {
         try {
             // Find student by parent key
-            const [students] = await pool.execute("SELECT * FROM students WHERE parent_key = ?", [parentKey]);
+            const [students] = await db_js_1.default.execute("SELECT * FROM students WHERE parent_key = ?", [parentKey]);
             if (students.length === 0) {
                 return {
                     success: false,
@@ -14,7 +20,7 @@ export class ParentService {
             }
             const student = students[0];
             // Check if already connected
-            const [existing] = await pool.execute("SELECT * FROM parent_students WHERE user_id = ? AND student_id = ?", [userId, student.id]);
+            const [existing] = await db_js_1.default.execute("SELECT * FROM parent_students WHERE user_id = ? AND student_id = ?", [userId, student.id]);
             if (existing.length > 0) {
                 return {
                     success: false,
@@ -22,9 +28,9 @@ export class ParentService {
                 };
             }
             // Create connection
-            await pool.execute("INSERT INTO parent_students (user_id, student_id) VALUES (?, ?)", [userId, student.id]);
+            await db_js_1.default.execute("INSERT INTO parent_students (user_id, student_id) VALUES (?, ?)", [userId, student.id]);
             // Get full student data
-            const studentData = await StudentService.getStudentById(student.id);
+            const studentData = await studentService_js_1.StudentService.getStudentById(student.id);
             return {
                 success: true,
                 message: "Successfully connected to student!",
@@ -40,7 +46,7 @@ export class ParentService {
     static async getConnectedStudents(userId) {
         try {
             // Get connected students with additional info
-            const [students] = await pool.execute(`SELECT s.*, ps.connected_at,
+            const [students] = await db_js_1.default.execute(`SELECT s.*, ps.connected_at,
                 COUNT(CASE WHEN a.is_present = 1 THEN 1 END) as present_days,
                 COUNT(a.id) as total_days,
                 CASE 
@@ -70,7 +76,7 @@ export class ParentService {
     static async disconnectFromStudent(userId, studentId) {
         try {
             // Remove connection
-            const [result] = await pool.execute("DELETE FROM parent_students WHERE user_id = ? AND student_id = ?", [userId, studentId]);
+            const [result] = await db_js_1.default.execute("DELETE FROM parent_students WHERE user_id = ? AND student_id = ?", [userId, studentId]);
             if (result.affectedRows === 0) {
                 return {
                     success: false,
@@ -88,3 +94,4 @@ export class ParentService {
         }
     }
 }
+exports.ParentService = ParentService;

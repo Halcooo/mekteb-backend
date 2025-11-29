@@ -1,6 +1,8 @@
-import { Router } from "express";
-import { NewsController } from "../controllers/newsController.js";
-const router = Router();
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const newsController_js_1 = require("../controllers/newsController.js");
+const router = (0, express_1.Router)();
 // GET /api/images/:fileName - Serve image files
-router.get("/:fileName", NewsController.serveImage);
-export default router;
+router.get("/:fileName", newsController_js_1.NewsController.serveImage);
+exports.default = router;

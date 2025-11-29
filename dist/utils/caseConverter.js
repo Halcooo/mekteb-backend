@@ -1,17 +1,23 @@
+"use strict";
 /**
  * Utility functions for converting between snake_case and camelCase
  * Used to maintain camelCase in TypeScript code while keeping snake_case in database
  */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.toCamelCase = toCamelCase;
+exports.toSnakeCase = toSnakeCase;
+exports.keysToCamelCase = keysToCamelCase;
+exports.keysToSnakeCase = keysToSnakeCase;
 // Convert snake_case string to camelCase
-export function toCamelCase(str) {
+function toCamelCase(str) {
     return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 }
 // Convert camelCase string to snake_case
-export function toSnakeCase(str) {
+function toSnakeCase(str) {
     return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 }
 // Convert object keys from snake_case to camelCase
-export function keysToCamelCase(obj) {
+function keysToCamelCase(obj) {
     if (obj === null || obj === undefined)
         return obj;
     if (Array.isArray(obj)) {
@@ -30,7 +36,7 @@ export function keysToCamelCase(obj) {
     return obj;
 }
 // Convert object keys from camelCase to snake_case
-export function keysToSnakeCase(obj) {
+function keysToSnakeCase(obj) {
     if (obj === null || obj === undefined)
         return obj;
     if (Array.isArray(obj)) {

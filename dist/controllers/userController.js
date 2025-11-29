@@ -1,8 +1,11 @@
-import { UserService } from "../services/userService.js";
-export class UserController {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.UserController = void 0;
+const userService_js_1 = require("../services/userService.js");
+class UserController {
     static async getAllUsers(req, res) {
         try {
-            const users = await UserService.getAllUsers();
+            const users = await userService_js_1.UserService.getAllUsers();
             res.json(users);
         }
         catch (error) {
@@ -14,3 +17,4 @@ export class UserController {
         }
     }
 }
+exports.UserController = UserController;

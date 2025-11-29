@@ -1,5 +1,11 @@
-import pool from "../db.js";
-export class AttendanceService {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AttendanceService = void 0;
+const db_js_1 = __importDefault(require("../db.js"));
+class AttendanceService {
     static async getAllAttendance(date) {
         try {
             let query = `
@@ -19,7 +25,7 @@ export class AttendanceService {
             }
             query +=
                 " ORDER BY a.date DESC, s.grade_level, s.last_name, s.first_name";
-            const [rows] = await pool.query(query, params);
+            const [rows] = await db_js_1.default.query(query, params);
             return rows;
         }
         catch (error) {
@@ -29,7 +35,7 @@ export class AttendanceService {
     }
     static async getAttendanceById(id) {
         try {
-            const [rows] = await pool.query(`SELECT a.*, 
+            const [rows] = await db_js_1.default.query(`SELECT a.*, 
                 s.first_name as student_first_name, 
                 s.last_name as student_last_name,
                 s.grade_level,
@@ -72,7 +78,7 @@ export class AttendanceService {
                 params.push(endDate);
             }
             query += " ORDER BY a.date DESC";
-            const [rows] = await pool.query(query, params);
+            const [rows] = await db_js_1.default.query(query, params);
             return rows;
         }
         catch (error) {
@@ -82,7 +88,7 @@ export class AttendanceService {
     }
     static async getAttendanceByDate(date) {
         try {
-            const [rows] = await pool.query(`SELECT a.*, 
+            const [rows] = await db_js_1.default.query(`SELECT a.*, 
                 s.first_name as student_first_name, 
                 s.last_name as student_last_name,
                 s.grade_level,
@@ -118,7 +124,7 @@ export class AttendanceService {
                 params.push(date);
             }
             query += " ORDER BY a.date DESC, s.last_name, s.first_name";
-            const [rows] = await pool.query(query, params);
+            const [rows] = await db_js_1.default.query(query, params);
             return rows;
         }
         catch (error) {
@@ -134,7 +140,7 @@ export class AttendanceService {
             if (existingAttendance) {
                 throw new Error("Attendance already exists for this student on this date");
             }
-            const [result] = await pool.query("INSERT INTO attendance (student_id, date, status, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())", [student_id, date, status]);
+            const [result] = await db_js_1.default.query("INSERT INTO attendance (student_id, date, status, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())", [student_id, date, status]);
             const insertResult = result;
             const newAttendance = await AttendanceService.getAttendanceById(insertResult.insertId);
             if (!newAttendance) {
@@ -155,7 +161,7 @@ export class AttendanceService {
     static async updateAttendance(id, attendanceData) {
         try {
             const { status } = attendanceData;
-            const [result] = await pool.query("UPDATE attendance SET status = ?, updated_at = NOW() WHERE id = ?", [status, id]);
+            const [result] = await db_js_1.default.query("UPDATE attendance SET status = ?, updated_at = NOW() WHERE id = ?", [status, id]);
             const updateResult = result;
             if (updateResult.affectedRows === 0) {
                 return null;
@@ -169,7 +175,7 @@ export class AttendanceService {
     }
     static async deleteAttendance(id) {
         try {
-            const [result] = await pool.query("DELETE FROM attendance WHERE id = ?", [
+            const [result] = await db_js_1.default.query("DELETE FROM attendance WHERE id = ?", [
                 id,
             ]);
             const deleteResult = result;
@@ -182,7 +188,7 @@ export class AttendanceService {
     }
     static async getStudentAttendanceByDate(student_id, date) {
         try {
-            const [rows] = await pool.query(`SELECT a.*, 
+            const [rows] = await db_js_1.default.query(`SELECT a.*, 
                 s.first_name as student_first_name, 
                 s.last_name as student_last_name,
                 s.grade_level
@@ -221,7 +227,7 @@ export class AttendanceService {
                 query += " AND date <= ?";
                 params.push(endDate);
             }
-            const [rows] = await pool.query(query, params);
+            const [rows] = await db_js_1.default.query(query, params);
             const stats = rows[0];
             const attendanceRate = stats.totalDays > 0
                 ? ((stats.presentDays + stats.lateDays) / stats.totalDays) * 100
@@ -250,7 +256,7 @@ export class AttendanceService {
                 attendance.date,
                 attendance.status,
             ]);
-            const [result] = await pool.query("INSERT INTO attendance (student_id, date, status, created_at, updated_at) VALUES ?", [values.map((v) => [...v, new Date(), new Date()])]);
+            const [result] = await db_js_1.default.query("INSERT INTO attendance (student_id, date, status, created_at, updated_at) VALUES ?", [values.map((v) => [...v, new Date(), new Date()])]);
             const insertResult = result;
             return insertResult.affectedRows;
         }
@@ -264,7 +270,7 @@ export class AttendanceService {
     }
     static async getAttendanceSummaryByDate(date) {
         try {
-            const [rows] = await pool.query(`SELECT 
+            const [rows] = await db_js_1.default.query(`SELECT 
           s.grade_level,
           COUNT(*) as totalStudents,
           SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) as presentCount,
@@ -284,3 +290,4 @@ export class AttendanceService {
         }
     }
 }
+exports.AttendanceService = AttendanceService;

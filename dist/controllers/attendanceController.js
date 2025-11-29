@@ -1,5 +1,8 @@
-import { AttendanceService, } from "../services/attendanceService.js";
-export class AttendanceController {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AttendanceController = void 0;
+const attendanceService_js_1 = require("../services/attendanceService.js");
+class AttendanceController {
     static async getAllAttendance(req, res) {
         try {
             const { date } = req.query;
@@ -14,7 +17,7 @@ export class AttendanceController {
                     return;
                 }
             }
-            const attendance = await AttendanceService.getAllAttendance(date);
+            const attendance = await attendanceService_js_1.AttendanceService.getAllAttendance(date);
             res.json({
                 success: true,
                 data: attendance,
@@ -41,7 +44,7 @@ export class AttendanceController {
                 });
                 return;
             }
-            const attendance = await AttendanceService.getAttendanceById(id);
+            const attendance = await attendanceService_js_1.AttendanceService.getAttendanceById(id);
             if (!attendance) {
                 res.status(404).json({
                     success: false,
@@ -92,7 +95,7 @@ export class AttendanceController {
                 });
                 return;
             }
-            const attendance = await AttendanceService.getAttendanceByStudent(student_id, startDate, endDate);
+            const attendance = await attendanceService_js_1.AttendanceService.getAttendanceByStudent(student_id, startDate, endDate);
             res.json({
                 success: true,
                 data: attendance,
@@ -123,7 +126,7 @@ export class AttendanceController {
                 });
                 return;
             }
-            const attendance = await AttendanceService.getAttendanceByDate(date);
+            const attendance = await attendanceService_js_1.AttendanceService.getAttendanceByDate(date);
             res.json({
                 success: true,
                 data: attendance,
@@ -162,7 +165,7 @@ export class AttendanceController {
                     return;
                 }
             }
-            const attendance = await AttendanceService.getAttendanceByGrade(grade, date);
+            const attendance = await attendanceService_js_1.AttendanceService.getAttendanceByGrade(grade, date);
             res.json({
                 success: true,
                 data: attendance,
@@ -222,7 +225,7 @@ export class AttendanceController {
                 });
                 return;
             }
-            const newAttendance = await AttendanceService.createAttendance({
+            const newAttendance = await attendanceService_js_1.AttendanceService.createAttendance({
                 student_id,
                 date,
                 status,
@@ -274,7 +277,7 @@ export class AttendanceController {
                 });
                 return;
             }
-            const updatedAttendance = await AttendanceService.updateAttendance(id, {
+            const updatedAttendance = await attendanceService_js_1.AttendanceService.updateAttendance(id, {
                 status,
             });
             if (!updatedAttendance) {
@@ -309,7 +312,7 @@ export class AttendanceController {
                 });
                 return;
             }
-            const deleted = await AttendanceService.deleteAttendance(id);
+            const deleted = await attendanceService_js_1.AttendanceService.deleteAttendance(id);
             if (!deleted) {
                 res.status(404).json({
                     success: false,
@@ -360,7 +363,7 @@ export class AttendanceController {
                 });
                 return;
             }
-            const stats = await AttendanceService.getStudentAttendanceStats(student_id, startDate, endDate);
+            const stats = await attendanceService_js_1.AttendanceService.getStudentAttendanceStats(student_id, startDate, endDate);
             res.json({
                 success: true,
                 data: stats,
@@ -429,7 +432,7 @@ export class AttendanceController {
                     return;
                 }
             }
-            const createdCount = await AttendanceService.createBulkAttendance(attendanceList);
+            const createdCount = await attendanceService_js_1.AttendanceService.createBulkAttendance(attendanceList);
             res.status(201).json({
                 success: true,
                 message: `${createdCount} attendance records created successfully`,
@@ -457,7 +460,7 @@ export class AttendanceController {
                 });
                 return;
             }
-            const summary = await AttendanceService.getAttendanceSummaryByDate(date);
+            const summary = await attendanceService_js_1.AttendanceService.getAttendanceSummaryByDate(date);
             res.json({
                 success: true,
                 data: summary,
@@ -474,3 +477,4 @@ export class AttendanceController {
         }
     }
 }
+exports.AttendanceController = AttendanceController;

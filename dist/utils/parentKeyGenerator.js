@@ -1,6 +1,11 @@
+"use strict";
 /**
  * Utility functions for generating and validating parent keys
  */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.generateParentKey = generateParentKey;
+exports.validateParentKeyFormat = validateParentKeyFormat;
+exports.generateUniqueParentKey = generateUniqueParentKey;
 /**
  * Generates a unique parent key in format YYYY-MMDD-XXXX
  * Where:
@@ -9,7 +14,7 @@
  * - DD is the current day
  * - XXXX is a random 4-character alphanumeric string
  */
-export function generateParentKey() {
+function generateParentKey() {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -26,7 +31,7 @@ export function generateParentKey() {
  * Validates parent key format
  * Expected format: YYYY-MMDD-XXXX
  */
-export function validateParentKeyFormat(key) {
+function validateParentKeyFormat(key) {
     const parentKeyRegex = /^[0-9]{4}-[0-9]{4}-[A-Z0-9]{4}$/;
     return parentKeyRegex.test(key);
 }
@@ -34,7 +39,7 @@ export function validateParentKeyFormat(key) {
  * Generates a unique parent key ensuring no duplicates in database
  * This should be called from the service layer with database access
  */
-export async function generateUniqueParentKey(checkExistsFn) {
+async function generateUniqueParentKey(checkExistsFn) {
     let attempts = 0;
     const maxAttempts = 10;
     while (attempts < maxAttempts) {

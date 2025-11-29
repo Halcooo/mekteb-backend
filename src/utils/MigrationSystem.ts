@@ -1,9 +1,8 @@
 import mysql from "mysql2/promise";
 import fs from "fs/promises";
 import path from "path";
-import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
+const __filename = path.resolve();
 const __dirname = path.dirname(__filename);
 
 // Migration system for MySQL database
