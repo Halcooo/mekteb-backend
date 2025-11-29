@@ -98,8 +98,7 @@ public
 *.sqlite
 *.sqlite3
 
-# Upload directories
-uploads/
+
 temp/
 
 # IDE files
