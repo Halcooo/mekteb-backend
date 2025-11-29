@@ -5,7 +5,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # Production builds
-dist/
 build/
 
 # Environment variables
@@ -64,16 +63,13 @@ jspm_packages/
 # Next.js build output
 .next
 
-# Nuxt.js build / generate output
-.nuxt
-dist
+
 
 # Gatsby files
 .cache/
 public
 
-# Vuepress build output
-.vuepress/dist
+
 
 # Serverless directories
 .serverless/
