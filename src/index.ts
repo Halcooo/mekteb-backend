@@ -1,6 +1,12 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+
+// Load environment variables
+dotenv.config();
+
+// Import your routes (remove .js extensions)
 import healthRoutes from "./routes/healthRoutes";
 import newsRoutes from "./routes/newsRoutes";
 import studentRoutes from "./routes/studentRoutes";
@@ -11,14 +17,10 @@ import imageRoutes from "./routes/imageRoutes";
 import commentRoutes from "./routes/commentRoutes";
 import parentRoutes from "./routes/parentRoutes";
 
-dotenv.config();
 const app = express();
 
-// CORS Configuration - Allow all origins for development
-
-const corsOptions = {
-  origin: "*",
-};
+// CORS configuration
+const corsOptions = { origin: "*" }; // allow all origins for now
 app.use(cors(corsOptions));
 
 // Middleware
@@ -36,7 +38,7 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/parent", parentRoutes);
 
-// Root endpoint for basic server status
+// Root endpoint
 app.get("/", (req, res) => {
   res.json({
     message: "Server is running!",
@@ -55,9 +57,8 @@ app.get("/", (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
-
+// Use cPanel-provided port
+const PORT = process.env.PORT || 5000; // fallback for local dev
 app.listen(PORT, () => {
-  console.log("idee");
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

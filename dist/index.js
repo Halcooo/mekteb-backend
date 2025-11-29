@@ -6,6 +6,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
+// Load environment variables
+dotenv_1.default.config();
+// Import your routes (remove .js extensions)
 const healthRoutes_1 = __importDefault(require("./routes/healthRoutes"));
 const newsRoutes_1 = __importDefault(require("./routes/newsRoutes"));
 const studentRoutes_1 = __importDefault(require("./routes/studentRoutes"));
@@ -15,12 +18,9 @@ const attendanceRoutes_1 = __importDefault(require("./routes/attendanceRoutes"))
 const imageRoutes_1 = __importDefault(require("./routes/imageRoutes"));
 const commentRoutes_1 = __importDefault(require("./routes/commentRoutes"));
 const parentRoutes_1 = __importDefault(require("./routes/parentRoutes"));
-dotenv_1.default.config();
 const app = (0, express_1.default)();
-// CORS Configuration - Allow all origins for development
-const corsOptions = {
-    origin: "*",
-};
+// CORS configuration
+const corsOptions = { origin: "*" }; // allow all origins for now
 app.use((0, cors_1.default)(corsOptions));
 // Middleware
 app.use(express_1.default.json());
@@ -35,7 +35,7 @@ app.use("/api/images", imageRoutes_1.default);
 app.use("/api/attendance", attendanceRoutes_1.default);
 app.use("/api/comments", commentRoutes_1.default);
 app.use("/api/parent", parentRoutes_1.default);
-// Root endpoint for basic server status
+// Root endpoint
 app.get("/", (req, res) => {
     res.json({
         message: "Server is running!",
@@ -53,8 +53,8 @@ app.get("/", (req, res) => {
         },
     });
 });
-const PORT = process.env.PORT || 5000;
+// Use cPanel-provided port
+const PORT = process.env.PORT || 5000; // fallback for local dev
 app.listen(PORT, () => {
-    console.log("idee");
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
