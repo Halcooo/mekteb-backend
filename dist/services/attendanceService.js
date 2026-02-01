@@ -270,19 +270,54 @@ class AttendanceService {
     }
     static async getAttendanceSummaryByDate(date) {
         try {
+            // First, get total student count and status counts
+            const [totalResult] = await db_1.default.query(`SELECT COUNT(*) as total FROM students`);
+            const totalStudents = Number(totalResult[0].total) || 0;
+            const [statusResult] = await db_1.default.query(`SELECT 
+          COALESCE(SUM(CASE WHEN status = 'PRESENT' THEN 1 ELSE 0 END), 0) as presentCount,
+          COALESCE(SUM(CASE WHEN status = 'ABSENT' THEN 1 ELSE 0 END), 0) as absentCount,
+          COALESCE(SUM(CASE WHEN status = 'LATE' THEN 1 ELSE 0 END), 0) as lateCount,
+          COALESCE(SUM(CASE WHEN status = 'EXCUSED' THEN 1 ELSE 0 END), 0) as excusedCount
+         FROM attendance 
+         WHERE date = ?`, [date]);
+            const presentCount = Number(statusResult[0]?.presentCount) || 0;
+            const lateCount = Number(statusResult[0]?.lateCount) || 0;
+            const excusedCount = Number(statusResult[0]?.excusedCount) || 0;
+            const explicitAbsent = Number(statusResult[0]?.absentCount) || 0;
+            // Calculate total absent: students without records + explicitly marked absent
+            const absentCount = totalStudents - presentCount - lateCount - excusedCount;
+            // Get breakdown by grade
             const [rows] = await db_1.default.query(`SELECT 
-          s.grade_level,
-          COUNT(*) as totalStudents,
-          SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) as presentCount,
-          SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) as absentCount,
-          SUM(CASE WHEN a.status = 'LATE' THEN 1 ELSE 0 END) as lateCount,
-          SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) as excusedCount
-         FROM attendance a
-         LEFT JOIN students s ON a.student_id = s.id
-         WHERE a.date = ?
+          COALESCE(s.grade_level, 'Unknown') as grade_level,
+          COUNT(s.id) as totalStudents,
+          COALESCE(SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END), 0) as presentCount,
+          COALESCE(SUM(CASE WHEN a.status = 'LATE' THEN 1 ELSE 0 END), 0) as lateCount,
+          COALESCE(SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END), 0) as excusedCount
+         FROM students s
+         LEFT JOIN attendance a ON a.student_id = s.id AND a.date = ?
          GROUP BY s.grade_level
          ORDER BY s.grade_level`, [date]);
-            return rows;
+            const byGrade = rows.map((row) => ({
+                ...row,
+                absentCount: Number(row.totalStudents) -
+                    Number(row.presentCount) -
+                    Number(row.lateCount) -
+                    Number(row.excusedCount),
+            }));
+            const presentRate = totalStudents
+                ? (presentCount / totalStudents) * 100
+                : 0;
+            return {
+                totals: {
+                    totalStudents,
+                    presentCount,
+                    absentCount,
+                    lateCount,
+                    excusedCount,
+                    presentRate: Math.round(presentRate * 10) / 10,
+                },
+                byGrade,
+            };
         }
         catch (error) {
             console.error("Error getting attendance summary:", error);

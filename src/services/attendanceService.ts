@@ -80,7 +80,7 @@ export class AttendanceService {
          LEFT JOIN students s ON a.student_id = s.id
          LEFT JOIN users u ON s.parent_id = u.id
          WHERE a.id = ?`,
-        [id]
+        [id],
       );
       return rows[0] || null;
     } catch (error) {
@@ -92,7 +92,7 @@ export class AttendanceService {
   static async getAttendanceByStudent(
     student_id: number,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
   ): Promise<Attendance[]> {
     try {
       let query = `
@@ -143,7 +143,7 @@ export class AttendanceService {
          LEFT JOIN users u ON s.parent_id = u.id
          WHERE a.date = ?
          ORDER BY s.grade_level, s.last_name, s.first_name`,
-        [date]
+        [date],
       );
       return rows;
     } catch (error) {
@@ -154,7 +154,7 @@ export class AttendanceService {
 
   static async getAttendanceByGrade(
     grade_level: string,
-    date?: string
+    date?: string,
   ): Promise<Attendance[]> {
     try {
       let query = `
@@ -187,29 +187,29 @@ export class AttendanceService {
   }
 
   static async createAttendance(
-    attendanceData: CreateAttendanceData
+    attendanceData: CreateAttendanceData,
   ): Promise<Attendance> {
     try {
       const { student_id, date, status } = attendanceData;
 
       // Check if attendance already exists for this student on this date
-      const existingAttendance = await AttendanceService.getStudentAttendanceByDate(
-        student_id,
-        date
-      );
+      const existingAttendance =
+        await AttendanceService.getStudentAttendanceByDate(student_id, date);
       if (existingAttendance) {
         throw new Error(
-          "Attendance already exists for this student on this date"
+          "Attendance already exists for this student on this date",
         );
       }
 
       const [result] = await pool.query(
         "INSERT INTO attendance (student_id, date, status, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())",
-        [student_id, date, status]
+        [student_id, date, status],
       );
 
       const insertResult = result as any;
-      const newAttendance = await AttendanceService.getAttendanceById(insertResult.insertId);
+      const newAttendance = await AttendanceService.getAttendanceById(
+        insertResult.insertId,
+      );
 
       if (!newAttendance) {
         throw new Error("Failed to retrieve created attendance");
@@ -229,14 +229,14 @@ export class AttendanceService {
 
   static async updateAttendance(
     id: number,
-    attendanceData: UpdateAttendanceData
+    attendanceData: UpdateAttendanceData,
   ): Promise<Attendance | null> {
     try {
       const { status } = attendanceData;
 
       const [result] = await pool.query(
         "UPDATE attendance SET status = ?, updated_at = NOW() WHERE id = ?",
-        [status, id]
+        [status, id],
       );
 
       const updateResult = result as any;
@@ -266,7 +266,7 @@ export class AttendanceService {
 
   static async getStudentAttendanceByDate(
     student_id: number,
-    date: string
+    date: string,
   ): Promise<Attendance | null> {
     try {
       const [rows] = await pool.query<Attendance[]>(
@@ -277,7 +277,7 @@ export class AttendanceService {
          FROM attendance a
          LEFT JOIN students s ON a.student_id = s.id
          WHERE a.student_id = ? AND a.date = ?`,
-        [student_id, date]
+        [student_id, date],
       );
       return rows[0] || null;
     } catch (error) {
@@ -289,7 +289,7 @@ export class AttendanceService {
   static async getStudentAttendanceStats(
     student_id: number,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
   ): Promise<AttendanceStats> {
     try {
       let query = `
@@ -339,7 +339,7 @@ export class AttendanceService {
   }
 
   static async createBulkAttendance(
-    attendanceList: CreateAttendanceData[]
+    attendanceList: CreateAttendanceData[],
   ): Promise<number> {
     try {
       if (attendanceList.length === 0) {
@@ -354,7 +354,7 @@ export class AttendanceService {
 
       const [result] = await pool.query(
         "INSERT INTO attendance (student_id, date, status, created_at, updated_at) VALUES ?",
-        [values.map((v) => [...v, new Date(), new Date()])]
+        [values.map((v) => [...v, new Date(), new Date()])],
       );
 
       const insertResult = result as any;
@@ -363,32 +363,90 @@ export class AttendanceService {
       console.error("Error creating bulk attendance:", error);
       if ((error as any).code === "ER_DUP_ENTRY") {
         throw new Error(
-          "Some attendance records already exist for the given date"
+          "Some attendance records already exist for the given date",
         );
       }
       throw new Error("Failed to create bulk attendance");
     }
   }
 
-  static async getAttendanceSummaryByDate(date: string): Promise<any> {
+  static async getAttendanceSummaryByDate(date: string): Promise<{
+    totals: {
+      totalStudents: number;
+      presentCount: number;
+      absentCount: number;
+      lateCount: number;
+      excusedCount: number;
+      presentRate: number;
+    };
+    byGrade: any[];
+  }> {
     try {
-      const [rows] = await pool.query(
+      // First, get total student count and status counts
+      const [totalResult] = await pool.query<any[]>(
+        `SELECT COUNT(*) as total FROM students`,
+      );
+      const totalStudents = Number(totalResult[0].total) || 0;
+
+      const [statusResult] = await pool.query<any[]>(
         `SELECT 
-          s.grade_level,
-          COUNT(*) as totalStudents,
-          SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END) as presentCount,
-          SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END) as absentCount,
-          SUM(CASE WHEN a.status = 'LATE' THEN 1 ELSE 0 END) as lateCount,
-          SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END) as excusedCount
-         FROM attendance a
-         LEFT JOIN students s ON a.student_id = s.id
-         WHERE a.date = ?
-         GROUP BY s.grade_level
-         ORDER BY s.grade_level`,
-        [date]
+          COALESCE(SUM(CASE WHEN status = 'PRESENT' THEN 1 ELSE 0 END), 0) as presentCount,
+          COALESCE(SUM(CASE WHEN status = 'ABSENT' THEN 1 ELSE 0 END), 0) as absentCount,
+          COALESCE(SUM(CASE WHEN status = 'LATE' THEN 1 ELSE 0 END), 0) as lateCount,
+          COALESCE(SUM(CASE WHEN status = 'EXCUSED' THEN 1 ELSE 0 END), 0) as excusedCount
+         FROM attendance 
+         WHERE date = ?`,
+        [date],
       );
 
-      return rows;
+      const presentCount = Number(statusResult[0]?.presentCount) || 0;
+      const lateCount = Number(statusResult[0]?.lateCount) || 0;
+      const excusedCount = Number(statusResult[0]?.excusedCount) || 0;
+      const explicitAbsent = Number(statusResult[0]?.absentCount) || 0;
+
+      // Calculate total absent: students without records + explicitly marked absent
+      const absentCount =
+        totalStudents - presentCount - lateCount - excusedCount;
+
+      // Get breakdown by grade
+      const [rows] = await pool.query(
+        `SELECT 
+          COALESCE(s.grade_level, 'Unknown') as grade_level,
+          COUNT(s.id) as totalStudents,
+          COALESCE(SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END), 0) as presentCount,
+          COALESCE(SUM(CASE WHEN a.status = 'LATE' THEN 1 ELSE 0 END), 0) as lateCount,
+          COALESCE(SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END), 0) as excusedCount
+         FROM students s
+         LEFT JOIN attendance a ON a.student_id = s.id AND a.date = ?
+         GROUP BY s.grade_level
+         ORDER BY s.grade_level`,
+        [date],
+      );
+
+      const byGrade = (rows as any[]).map((row) => ({
+        ...row,
+        absentCount:
+          Number(row.totalStudents) -
+          Number(row.presentCount) -
+          Number(row.lateCount) -
+          Number(row.excusedCount),
+      }));
+
+      const presentRate = totalStudents
+        ? (presentCount / totalStudents) * 100
+        : 0;
+
+      return {
+        totals: {
+          totalStudents,
+          presentCount,
+          absentCount,
+          lateCount,
+          excusedCount,
+          presentRate: Math.round(presentRate * 10) / 10,
+        },
+        byGrade,
+      };
     } catch (error) {
       console.error("Error getting attendance summary:", error);
       throw new Error("Failed to get attendance summary");

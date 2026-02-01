@@ -7,8 +7,16 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 // Load environment variables
-dotenv_1.default.config();
+const envName = process.env.NODE_ENV ?? "development";
+const envPath = path_1.default.resolve(process.cwd(), `.env.${envName}`);
+if (fs_1.default.existsSync(envPath)) {
+    dotenv_1.default.config({ path: envPath });
+}
+else {
+    dotenv_1.default.config();
+}
 // Import your routes (remove .js extensions)
 const healthRoutes_1 = __importDefault(require("./routes/healthRoutes"));
 const newsRoutes_1 = __importDefault(require("./routes/newsRoutes"));

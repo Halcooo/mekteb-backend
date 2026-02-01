@@ -24,7 +24,7 @@ export class AttendanceController {
       }
 
       const attendance = await AttendanceService.getAllAttendance(
-        date as string
+        date as string,
       );
 
       res.json({
@@ -83,7 +83,7 @@ export class AttendanceController {
 
   static async getAttendanceByStudent(
     req: Request,
-    res: Response
+    res: Response,
   ): Promise<void> {
     try {
       const student_id = parseInt(req.params.studentId);
@@ -122,7 +122,7 @@ export class AttendanceController {
       const attendance = await AttendanceService.getAttendanceByStudent(
         student_id,
         startDate as string,
-        endDate as string
+        endDate as string,
       );
 
       res.json({
@@ -179,7 +179,7 @@ export class AttendanceController {
 
   static async getAttendanceByGrade(
     req: Request,
-    res: Response
+    res: Response,
   ): Promise<void> {
     try {
       const { grade } = req.params;
@@ -207,7 +207,7 @@ export class AttendanceController {
 
       const attendance = await AttendanceService.getAttendanceByGrade(
         grade,
-        date as string
+        date as string,
       );
 
       res.json({
@@ -400,7 +400,7 @@ export class AttendanceController {
 
   static async getStudentAttendanceStats(
     req: Request,
-    res: Response
+    res: Response,
   ): Promise<void> {
     try {
       const student_id = parseInt(req.params.studentId);
@@ -439,7 +439,7 @@ export class AttendanceController {
       const stats = await AttendanceService.getStudentAttendanceStats(
         student_id,
         startDate as string,
-        endDate as string
+        endDate as string,
       );
 
       res.json({
@@ -462,7 +462,7 @@ export class AttendanceController {
 
   static async createBulkAttendance(
     req: Request,
-    res: Response
+    res: Response,
   ): Promise<void> {
     try {
       const { attendanceList } = req.body;
@@ -528,9 +528,8 @@ export class AttendanceController {
         }
       }
 
-      const createdCount = await AttendanceService.createBulkAttendance(
-        attendanceList
-      );
+      const createdCount =
+        await AttendanceService.createBulkAttendance(attendanceList);
 
       res.status(201).json({
         success: true,
@@ -550,7 +549,7 @@ export class AttendanceController {
 
   static async getAttendanceSummary(
     req: Request,
-    res: Response
+    res: Response,
   ): Promise<void> {
     try {
       const { date } = req.params;

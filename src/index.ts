@@ -2,9 +2,16 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 
 // Load environment variables
-dotenv.config();
+const envName = process.env.NODE_ENV ?? "development";
+const envPath = path.resolve(process.cwd(), `.env.${envName}`);
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+} else {
+  dotenv.config();
+}
 
 // Import your routes (remove .js extensions)
 import healthRoutes from "./routes/healthRoutes";
@@ -29,7 +36,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   `${API_PREFIX}/uploads/news-images`,
-  express.static(path.join(process.cwd(), "uploads/news-images"))
+  express.static(path.join(process.cwd(), "uploads/news-images")),
 );
 
 // API Routes

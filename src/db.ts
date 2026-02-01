@@ -1,7 +1,15 @@
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
+import path from "path";
+import fs from "fs";
 
-dotenv.config();
+const envName = process.env.NODE_ENV ?? "development";
+const envPath = path.resolve(process.cwd(), `.env.${envName}`);
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+} else {
+  dotenv.config();
+}
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
