@@ -36,7 +36,7 @@ export class UserService {
     try {
       const [rows] = await pool.query<User[]>(
         "SELECT * FROM users WHERE id = ?",
-        [id]
+        [id],
       );
       return rows[0] || null;
     } catch (error) {
@@ -49,7 +49,7 @@ export class UserService {
     try {
       const [rows] = await pool.query<User[]>(
         "SELECT * FROM users WHERE email = ?",
-        [email]
+        [email],
       );
       return rows[0] || null;
     } catch (error) {
@@ -62,7 +62,7 @@ export class UserService {
     try {
       const [rows] = await pool.query<User[]>(
         "SELECT * FROM users WHERE username = ?",
-        [username]
+        [username],
       );
       return rows[0] || null;
     } catch (error) {
@@ -77,7 +77,7 @@ export class UserService {
         userData;
       const [result] = await pool.query(
         "INSERT INTO users (username, email, password, role, first_name, last_name, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())",
-        [username, email, password, role, first_name, last_name]
+        [username, email, password, role, first_name, last_name],
       );
 
       const insertResult = result as any;
@@ -94,6 +94,40 @@ export class UserService {
         throw new Error("User with this email or username already exists");
       }
       throw new Error("Failed to create user");
+    }
+  }
+
+  static async updateUser(
+    id: number,
+    updateData: Partial<{ firstName: string; lastName: string }>,
+  ): Promise<User | null> {
+    try {
+      const updates: string[] = [];
+      const values: any[] = [];
+
+      if (updateData.firstName) {
+        updates.push("first_name = ?");
+        values.push(updateData.firstName);
+      }
+
+      if (updateData.lastName) {
+        updates.push("last_name = ?");
+        values.push(updateData.lastName);
+      }
+
+      if (updates.length === 0) {
+        return await UserService.getUserById(id);
+      }
+
+      values.push(id);
+
+      const query = `UPDATE users SET ${updates.join(", ")} WHERE id = ?`;
+      await pool.query(query, values);
+
+      return await UserService.getUserById(id);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      throw new Error("Failed to update user");
     }
   }
 }

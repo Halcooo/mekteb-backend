@@ -1,15 +1,16 @@
 import { Router } from "express";
 import { UserController } from "../controllers/userController";
+import { authenticateToken } from "../middleware/authMiddleware";
 
 const router = Router();
 
 // GET /api/users - Get all users
 router.get("/", UserController.getAllUsers);
 
-// Add more user routes here as needed
-// router.get("/:id", UserController.getUserById);
-// router.post("/", UserController.createUser);
-// router.put("/:id", UserController.updateUser);
-// router.delete("/:id", UserController.deleteUser);
+// GET /api/users/profile - Get current user profile
+router.get("/profile", authenticateToken, UserController.getCurrentUser);
+
+// PUT /api/users/:id - Update user by ID
+router.put("/:id", authenticateToken, UserController.updateUser);
 
 export default router;
