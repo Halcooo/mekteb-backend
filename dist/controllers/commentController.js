@@ -151,7 +151,7 @@ class CommentController {
             }
             const commentData = {
                 studentId: parseInt(studentId),
-                authorId: req.user.id,
+                authorId: req.user.userId,
                 authorRole,
                 content: content.trim(),
                 date,
@@ -203,7 +203,7 @@ class CommentController {
                 });
                 return;
             }
-            const updatedComment = await commentService_1.CommentService.updateComment(commentId, { content: content.trim() }, req.user.id);
+            const updatedComment = await commentService_1.CommentService.updateComment(commentId, { content: content.trim() }, req.user.userId);
             res.json({
                 success: true,
                 data: updatedComment,
@@ -240,7 +240,7 @@ class CommentController {
                 });
                 return;
             }
-            await commentService_1.CommentService.deleteComment(commentId, req.user.id);
+            await commentService_1.CommentService.deleteComment(commentId, req.user.userId);
             res.json({
                 success: true,
                 message: "Comment deleted successfully",

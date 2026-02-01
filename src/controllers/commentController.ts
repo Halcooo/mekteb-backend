@@ -1,13 +1,11 @@
 import { Request, Response } from "express";
-import {
-  CommentService,
-  CreateCommentData,
-} from "../services/commentService";
+import { CommentService, CreateCommentData } from "../services/commentService";
 
 export interface AuthenticatedRequest extends Request {
   user?: {
-    id: number;
+    userId: number;
     username: string;
+    email: string;
     role: string;
   };
 }
@@ -16,7 +14,7 @@ export class CommentController {
   // Get comments with filters
   static async getComments(
     req: AuthenticatedRequest,
-    res: Response
+    res: Response,
   ): Promise<void> {
     try {
       const { studentId, date, authorRole, parentCommentId, page, limit } =
@@ -62,7 +60,7 @@ export class CommentController {
   // Get comments for a specific student
   static async getStudentComments(
     req: AuthenticatedRequest,
-    res: Response
+    res: Response,
   ): Promise<void> {
     try {
       const studentId = parseInt(req.params.studentId);
@@ -85,7 +83,7 @@ export class CommentController {
       const comments = await CommentService.getStudentComments(
         studentId,
         date as string,
-        authorRole as string
+        authorRole as string,
       );
 
       res.json({
@@ -105,7 +103,7 @@ export class CommentController {
   // Get daily comments (admin view)
   static async getDailyComments(
     req: AuthenticatedRequest,
-    res: Response
+    res: Response,
   ): Promise<void> {
     try {
       const { date } = req.params;
@@ -146,7 +144,7 @@ export class CommentController {
   // Create a new comment
   static async createComment(
     req: AuthenticatedRequest,
-    res: Response
+    res: Response,
   ): Promise<void> {
     try {
       const { studentId, content, date, parentCommentId } = req.body;
@@ -194,7 +192,7 @@ export class CommentController {
 
       const commentData: CreateCommentData = {
         studentId: parseInt(studentId),
-        authorId: req.user.id,
+        authorId: req.user.userId,
         authorRole,
         content: content.trim(),
         date,
@@ -225,7 +223,7 @@ export class CommentController {
   // Update a comment
   static async updateComment(
     req: AuthenticatedRequest,
-    res: Response
+    res: Response,
   ): Promise<void> {
     try {
       const commentId = parseInt(req.params.id);
@@ -258,7 +256,7 @@ export class CommentController {
       const updatedComment = await CommentService.updateComment(
         commentId,
         { content: content.trim() },
-        req.user.id
+        req.user.userId,
       );
 
       res.json({
@@ -282,7 +280,7 @@ export class CommentController {
   // Delete a comment
   static async deleteComment(
     req: AuthenticatedRequest,
-    res: Response
+    res: Response,
   ): Promise<void> {
     try {
       const commentId = parseInt(req.params.id);
@@ -303,7 +301,7 @@ export class CommentController {
         return;
       }
 
-      await CommentService.deleteComment(commentId, req.user.id);
+      await CommentService.deleteComment(commentId, req.user.userId);
 
       res.json({
         success: true,
@@ -325,7 +323,7 @@ export class CommentController {
   // Get comment thread
   static async getCommentThread(
     req: AuthenticatedRequest,
-    res: Response
+    res: Response,
   ): Promise<void> {
     try {
       const parentCommentId = parseInt(req.params.id);

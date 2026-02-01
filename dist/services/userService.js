@@ -65,5 +65,30 @@ class UserService {
             throw new Error("Failed to create user");
         }
     }
+    static async updateUser(id, updateData) {
+        try {
+            const updates = [];
+            const values = [];
+            if (updateData.firstName) {
+                updates.push("first_name = ?");
+                values.push(updateData.firstName);
+            }
+            if (updateData.lastName) {
+                updates.push("last_name = ?");
+                values.push(updateData.lastName);
+            }
+            if (updates.length === 0) {
+                return await UserService.getUserById(id);
+            }
+            values.push(id);
+            const query = `UPDATE users SET ${updates.join(", ")} WHERE id = ?`;
+            await db_1.default.query(query, values);
+            return await UserService.getUserById(id);
+        }
+        catch (error) {
+            console.error("Error updating user:", error);
+            throw new Error("Failed to update user");
+        }
+    }
 }
 exports.UserService = UserService;
