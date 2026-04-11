@@ -138,7 +138,11 @@ class AttendanceService {
             // Check if attendance already exists for this student on this date
             const existingAttendance = await AttendanceService.getStudentAttendanceByDate(student_id, date);
             if (existingAttendance) {
-                throw new Error("Attendance already exists for this student on this date");
+                const updatedAttendance = await AttendanceService.updateAttendance(existingAttendance.id, { status });
+                if (!updatedAttendance) {
+                    throw new Error("Failed to update existing attendance");
+                }
+                return updatedAttendance;
             }
             const [result] = await db_1.default.query("INSERT INTO attendance (student_id, date, status, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())", [student_id, date, status]);
             const insertResult = result;
@@ -194,7 +198,9 @@ class AttendanceService {
                 s.grade_level
          FROM attendance a
          LEFT JOIN students s ON a.student_id = s.id
-         WHERE a.student_id = ? AND a.date = ?`, [student_id, date]);
+         WHERE a.student_id = ? AND a.date = ?
+         ORDER BY a.updated_at DESC, a.id DESC
+         LIMIT 1`, [student_id, date]);
             return rows[0] || null;
         }
         catch (error) {
@@ -251,20 +257,24 @@ class AttendanceService {
             if (attendanceList.length === 0) {
                 return 0;
             }
-            const values = attendanceList.map((attendance) => [
-                attendance.student_id,
-                attendance.date,
-                attendance.status,
-            ]);
-            const [result] = await db_1.default.query("INSERT INTO attendance (student_id, date, status, created_at, updated_at) VALUES ?", [values.map((v) => [...v, new Date(), new Date()])]);
-            const insertResult = result;
-            return insertResult.affectedRows;
+            let affectedRows = 0;
+            for (const attendance of attendanceList) {
+                const existing = await AttendanceService.getStudentAttendanceByDate(attendance.student_id, attendance.date);
+                if (existing) {
+                    await AttendanceService.updateAttendance(existing.id, {
+                        status: attendance.status,
+                    });
+                    affectedRows += 1;
+                }
+                else {
+                    await AttendanceService.createAttendance(attendance);
+                    affectedRows += 1;
+                }
+            }
+            return affectedRows;
         }
         catch (error) {
             console.error("Error creating bulk attendance:", error);
-            if (error.code === "ER_DUP_ENTRY") {
-                throw new Error("Some attendance records already exist for the given date");
-            }
             throw new Error("Failed to create bulk attendance");
         }
     }

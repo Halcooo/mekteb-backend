@@ -86,5 +86,82 @@ class ParentController {
             });
         }
     }
+    // Get attendance records for a connected student (parent-scoped)
+    static async getStudentAttendance(req, res) {
+        try {
+            const userId = req.user?.userId;
+            const studentId = parseInt(req.params.studentId);
+            const limit = req.query.limit ? parseInt(req.query.limit) : 10;
+            if (!userId) {
+                return res.status(401).json({
+                    success: false,
+                    message: "User not authenticated",
+                });
+            }
+            if (isNaN(studentId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid student ID",
+                });
+            }
+            const records = await parentService_1.ParentService.getStudentAttendanceForParent(userId, studentId, limit);
+            res.json({
+                success: true,
+                data: records,
+            });
+        }
+        catch (error) {
+            console.error("Error getting student attendance:", error);
+            if (error instanceof Error &&
+                error.message === "PARENT_STUDENT_ACCESS_DENIED") {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied for this student",
+                });
+            }
+            res.status(500).json({
+                success: false,
+                message: "Failed to get student attendance",
+            });
+        }
+    }
+    // Get attendance stats for a connected student (parent-scoped)
+    static async getStudentAttendanceStats(req, res) {
+        try {
+            const userId = req.user?.userId;
+            const studentId = parseInt(req.params.studentId);
+            if (!userId) {
+                return res.status(401).json({
+                    success: false,
+                    message: "User not authenticated",
+                });
+            }
+            if (isNaN(studentId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid student ID",
+                });
+            }
+            const stats = await parentService_1.ParentService.getStudentAttendanceStatsForParent(userId, studentId);
+            res.json({
+                success: true,
+                data: stats,
+            });
+        }
+        catch (error) {
+            console.error("Error getting student attendance stats:", error);
+            if (error instanceof Error &&
+                error.message === "PARENT_STUDENT_ACCESS_DENIED") {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied for this student",
+                });
+            }
+            res.status(500).json({
+                success: false,
+                message: "Failed to get student attendance stats",
+            });
+        }
+    }
 }
 exports.ParentController = ParentController;
