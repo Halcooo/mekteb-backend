@@ -12,9 +12,6 @@ export class StudentController {
       const limit = parseInt(req.query.limit as string) || 10;
       const search = (req.query.search as string) || "";
 
-      console.log("Search request received:", { page, limit, search });
-      console.log("Query params:", req.query);
-
       const result = await StudentService.getAllStudents(page, limit, search);
 
       res.json({

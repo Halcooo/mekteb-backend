@@ -8,8 +8,6 @@ class StudentController {
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 10;
             const search = req.query.search || "";
-            console.log("Search request received:", { page, limit, search });
-            console.log("Query params:", req.query);
             const result = await studentService_1.StudentService.getAllStudents(page, limit, search);
             res.json({
                 success: true,

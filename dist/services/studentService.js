@@ -91,8 +91,6 @@ class StudentService {
          FROM students s 
          LEFT JOIN users p ON s.parent_id = p.id 
          ${whereClause}`;
-            console.log("Count Query:", countQuery);
-            console.log("Count Query Params:", queryParams);
             const [countRows] = await db_1.default.query(countQuery, queryParams);
             const totalCount = countRows[0].total;
             const totalPages = Math.ceil(totalCount / limit);
@@ -106,8 +104,6 @@ class StudentService {
          ORDER BY s.grade_level, s.last_name, s.first_name
          LIMIT ? OFFSET ?`;
             const selectParams = [...queryParams, limit, offset];
-            console.log("Select Query:", selectQuery);
-            console.log("Select Query Params:", selectParams);
             const [rows] = await db_1.default.query(selectQuery, selectParams);
             return {
                 students: rows.map((row) => StudentService.mapDbToApi(row)),

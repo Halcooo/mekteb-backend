@@ -11,6 +11,13 @@ class ParentService {
         const [rows] = await db_1.default.execute("SELECT 1 FROM parent_students WHERE user_id = ? AND student_id = ? LIMIT 1", [userId, studentId]);
         return rows.length > 0;
     }
+    static async isStudentConnectedToParentUser(userId, studentId) {
+        return this.isStudentConnectedToParent(userId, studentId);
+    }
+    static async getConnectedParentUserIds(studentId) {
+        const [rows] = await db_1.default.execute("SELECT user_id FROM parent_students WHERE student_id = ?", [studentId]);
+        return rows.map((row) => Number(row.user_id)).filter((id) => id > 0);
+    }
     // Connect parent to student using parent key
     static async connectToStudent(userId, parentKey) {
         try {

@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import { CommentService, CreateCommentData } from "../services/commentService";
+import { ParentService } from "../services/parentService";
+import { NotificationService } from "../services/notificationService";
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -76,8 +78,18 @@ export class CommentController {
 
       // For parents, ensure they can only see comments for their connected students
       if (req.user?.role === "parent") {
-        // TODO: Add validation that parent is connected to this student
-        // This should check the parent-student connection table
+        const canAccess = await ParentService.isStudentConnectedToParentUser(
+          req.user.userId,
+          studentId,
+        );
+
+        if (!canAccess) {
+          res.status(403).json({
+            success: false,
+            error: "Access denied for this student",
+          });
+          return;
+        }
       }
 
       const comments = await CommentService.getStudentComments(
@@ -165,19 +177,74 @@ export class CommentController {
         return;
       }
 
+      const parsedStudentId = parseInt(studentId, 10);
+      const parsedParentCommentId = parentCommentId
+        ? parseInt(parentCommentId, 10)
+        : undefined;
+
+      if (Number.isNaN(parsedStudentId)) {
+        res.status(400).json({
+          success: false,
+          error: "Invalid student ID",
+        });
+        return;
+      }
+
       // Determine comment type based on user role and parentCommentId
       let authorRole: "admin" | "teacher" | "parent";
+      let repliedToCommentAuthorId: number | null = null;
+      let isReply = false;
 
-      if (parentCommentId) {
-        // This is a reply - only parents can reply
-        if (req.user.role !== "parent") {
+      if (parsedParentCommentId) {
+        isReply = true;
+
+        // Reply is allowed for parent/admin/teacher
+        if (
+          !(
+            "parent" === req.user.role ||
+            ["admin", "teacher"].includes(req.user.role)
+          )
+        ) {
           res.status(403).json({
             success: false,
-            error: "Only parents can reply to comments",
+            error: "Only parent, admin, or teacher can reply to comments",
           });
           return;
         }
-        authorRole = "parent";
+
+        if (req.user.role === "parent") {
+          const canAccess = await ParentService.isStudentConnectedToParentUser(
+            req.user.userId,
+            parsedStudentId,
+          );
+
+          if (!canAccess) {
+            res.status(403).json({
+              success: false,
+              error: "Access denied for this student",
+            });
+            return;
+          }
+        }
+
+        const parentComment = await CommentService.getCommentById(
+          parsedParentCommentId,
+        );
+
+        if (parentComment.studentId !== parsedStudentId) {
+          res.status(400).json({
+            success: false,
+            error: "Reply comment does not belong to the same student",
+          });
+          return;
+        }
+
+        repliedToCommentAuthorId = parentComment.authorId;
+        if (req.user.role === "parent") {
+          authorRole = "parent";
+        } else {
+          authorRole = req.user.role as "admin" | "teacher";
+        }
       } else {
         // This is an original comment - only admin/teacher can create
         if (!["admin", "teacher"].includes(req.user.role)) {
@@ -191,22 +258,64 @@ export class CommentController {
       }
 
       const commentData: CreateCommentData = {
-        studentId: parseInt(studentId),
+        studentId: parsedStudentId,
         authorId: req.user.userId,
         authorRole,
         content: content.trim(),
         date,
-        parentCommentId: parentCommentId
-          ? parseInt(parentCommentId)
-          : undefined,
+        parentCommentId: parsedParentCommentId,
       };
 
       const comment = await CommentService.createComment(commentData);
 
+      if (isReply && repliedToCommentAuthorId) {
+        if (repliedToCommentAuthorId !== req.user.userId) {
+          const actorLabel =
+            authorRole === "parent"
+              ? "Parent"
+              : authorRole === "admin"
+                ? "Admin"
+                : "Teacher";
+
+          await NotificationService.createForUsers({
+            recipientUserIds: [repliedToCommentAuthorId],
+            actorUserId: req.user.userId,
+            type: "COMMENT_REPLIED",
+            title: `${actorLabel} replied`,
+            message: `${actorLabel} replied to your comment for ${comment.studentName || "student"}.`,
+            studentId: comment.studentId,
+            commentId: comment.id,
+            commentDate: comment.date,
+          });
+        }
+      }
+
+      if (!isReply && (authorRole === "admin" || authorRole === "teacher")) {
+        const parentUserIds = await ParentService.getConnectedParentUserIds(
+          comment.studentId,
+        );
+        const recipientUserIds = parentUserIds.filter(
+          (id) => id !== req.user?.userId,
+        );
+
+        if (recipientUserIds.length > 0) {
+          await NotificationService.createForUsers({
+            recipientUserIds,
+            actorUserId: req.user.userId,
+            type: "COMMENT_ADDED",
+            title: "New attendance comment",
+            message: `A new comment was added for ${comment.studentName || "your student"}.`,
+            studentId: comment.studentId,
+            commentId: comment.id,
+            commentDate: comment.date,
+          });
+        }
+      }
+
       res.status(201).json({
         success: true,
         data: comment,
-        message: parentCommentId
+        message: parsedParentCommentId
           ? "Reply added successfully"
           : "Comment created successfully",
       });

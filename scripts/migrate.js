@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { MigrationSystem } from "../src/utils/MigrationSystem.js";
-import pool from "../src/db.js";
+import { MigrationSystem } from "../src/utils/MigrationSystem";
+import pool from "../src/db";
 
 async function runMigrations() {
   const migrationSystem = new MigrationSystem(pool);

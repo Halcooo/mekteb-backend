@@ -23,6 +23,7 @@ import attendanceRoutes from "./routes/attendanceRoutes";
 import imageRoutes from "./routes/imageRoutes";
 import commentRoutes from "./routes/commentRoutes";
 import parentRoutes from "./routes/parentRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
 
 const app = express();
 const API_PREFIX = "/backend/api";
@@ -49,6 +50,7 @@ app.use(`${API_PREFIX}/attendance`, attendanceRoutes);
 app.use(`${API_PREFIX}/images`, imageRoutes);
 app.use(`${API_PREFIX}/comments`, commentRoutes);
 app.use(`${API_PREFIX}/parent`, parentRoutes);
+app.use(`${API_PREFIX}/notifications`, notificationRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {
@@ -71,6 +73,4 @@ app.get("/", (req, res) => {
 
 // Use cPanel-provided port
 const PORT = process.env.PORT || 5000; // fallback for local dev
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT);

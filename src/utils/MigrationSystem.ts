@@ -2,9 +2,6 @@ import mysql from "mysql2/promise";
 import fs from "fs/promises";
 import path from "path";
 
-const __filename = path.resolve();
-const __dirname = path.dirname(__filename);
-
 // Migration system for MySQL database
 export class MigrationSystem {
   private pool: mysql.Pool;
@@ -12,7 +9,7 @@ export class MigrationSystem {
 
   constructor(pool: mysql.Pool) {
     this.pool = pool;
-    this.migrationsDir = path.join(__dirname, "../../migrations");
+    this.migrationsDir = path.resolve(process.cwd(), "migrations");
   }
 
   // Initialize migrations table
@@ -27,13 +24,12 @@ export class MigrationSystem {
     `;
 
     await this.pool.execute(createMigrationsTableQuery);
-    console.log("✅ Migrations table initialized");
   }
 
   // Get executed migrations
   async getExecutedMigrations(): Promise<Set<string>> {
     const [rows] = await this.pool.execute(
-      "SELECT filename FROM migrations ORDER BY executed_at"
+      "SELECT filename FROM migrations ORDER BY executed_at",
     );
     return new Set((rows as any[]).map((row) => row.filename));
   }
@@ -79,11 +75,10 @@ export class MigrationSystem {
       // Record migration as executed
       await connection.execute(
         "INSERT INTO migrations (filename, checksum) VALUES (?, ?)",
-        [filename, checksum]
+        [filename, checksum],
       );
 
       await connection.commit();
-      console.log(`✅ Migration executed: ${filename}`);
     } catch (error) {
       await connection.rollback();
       throw error;
@@ -99,17 +94,12 @@ export class MigrationSystem {
     const pending = await this.getPendingMigrations();
 
     if (pending.length === 0) {
-      console.log("✅ No pending migrations");
       return;
     }
-
-    console.log(`📦 Found ${pending.length} pending migration(s)`);
 
     for (const migration of pending) {
       await this.executeMigration(migration);
     }
-
-    console.log("✅ All migrations completed successfully");
   }
 
   // Calculate checksum for migration integrity
@@ -120,21 +110,19 @@ export class MigrationSystem {
   // Rollback last migration (use with caution!)
   async rollbackLastMigration(): Promise<void> {
     const [rows] = (await this.pool.execute(
-      "SELECT * FROM migrations ORDER BY executed_at DESC LIMIT 1"
+      "SELECT * FROM migrations ORDER BY executed_at DESC LIMIT 1",
     )) as any[];
 
     if (rows.length === 0) {
-      console.log("No migrations to rollback");
       return;
     }
 
     const lastMigration = rows[0];
-    console.log(`⚠️  Rolling back migration: ${lastMigration.filename}`);
 
     // Look for rollback file
     const rollbackFile = lastMigration.filename.replace(
       ".sql",
-      ".rollback.sql"
+      ".rollback.sql",
     );
     const rollbackPath = path.join(this.migrationsDir, rollbackFile);
 
@@ -164,7 +152,6 @@ export class MigrationSystem {
         ]);
 
         await connection.commit();
-        console.log(`✅ Rollback completed: ${lastMigration.filename}`);
       } catch (error) {
         await connection.rollback();
         throw error;

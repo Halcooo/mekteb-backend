@@ -48,6 +48,22 @@ export class ParentService {
     return rows.length > 0;
   }
 
+  static async isStudentConnectedToParentUser(
+    userId: number,
+    studentId: number,
+  ): Promise<boolean> {
+    return this.isStudentConnectedToParent(userId, studentId);
+  }
+
+  static async getConnectedParentUserIds(studentId: number): Promise<number[]> {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      "SELECT user_id FROM parent_students WHERE student_id = ?",
+      [studentId],
+    );
+
+    return rows.map((row) => Number(row.user_id)).filter((id) => id > 0);
+  }
+
   // Connect parent to student using parent key
   static async connectToStudent(
     userId: number,

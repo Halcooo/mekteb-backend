@@ -27,6 +27,7 @@ const attendanceRoutes_1 = __importDefault(require("./routes/attendanceRoutes"))
 const imageRoutes_1 = __importDefault(require("./routes/imageRoutes"));
 const commentRoutes_1 = __importDefault(require("./routes/commentRoutes"));
 const parentRoutes_1 = __importDefault(require("./routes/parentRoutes"));
+const notificationRoutes_1 = __importDefault(require("./routes/notificationRoutes"));
 const app = (0, express_1.default)();
 const API_PREFIX = "/backend/api";
 // CORS configuration
@@ -46,6 +47,7 @@ app.use(`${API_PREFIX}/attendance`, attendanceRoutes_1.default);
 app.use(`${API_PREFIX}/images`, imageRoutes_1.default);
 app.use(`${API_PREFIX}/comments`, commentRoutes_1.default);
 app.use(`${API_PREFIX}/parent`, parentRoutes_1.default);
+app.use(`${API_PREFIX}/notifications`, notificationRoutes_1.default);
 // Root endpoint
 app.get("/", (req, res) => {
     res.json({
@@ -66,6 +68,4 @@ app.get("/", (req, res) => {
 });
 // Use cPanel-provided port
 const PORT = process.env.PORT || 5000; // fallback for local dev
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT);

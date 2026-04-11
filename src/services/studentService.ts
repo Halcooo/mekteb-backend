@@ -68,7 +68,7 @@ export class StudentService {
     try {
       const [rows] = await pool.query<any[]>(
         "SELECT COUNT(*) as count FROM students WHERE parent_key = ?",
-        [parentKey]
+        [parentKey],
       );
       return rows[0].count > 0;
     } catch (error) {
@@ -114,7 +114,7 @@ export class StudentService {
   static async getAllStudents(
     page: number = 1,
     limit: number = 10,
-    search: string = ""
+    search: string = "",
   ): Promise<PaginatedStudentsResult> {
     try {
       const offset = (page - 1) * limit;
@@ -145,9 +145,6 @@ export class StudentService {
          LEFT JOIN users p ON s.parent_id = p.id 
          ${whereClause}`;
 
-      console.log("Count Query:", countQuery);
-      console.log("Count Query Params:", queryParams);
-
       const [countRows] = await pool.query<any[]>(countQuery, queryParams);
       const totalCount = countRows[0].total;
       const totalPages = Math.ceil(totalCount / limit);
@@ -163,8 +160,6 @@ export class StudentService {
          LIMIT ? OFFSET ?`;
 
       const selectParams = [...queryParams, limit, offset];
-      console.log("Select Query:", selectQuery);
-      console.log("Select Query Params:", selectParams);
 
       const [rows] = await pool.query<StudentDB[]>(selectQuery, selectParams);
 
@@ -188,7 +183,7 @@ export class StudentService {
          FROM students s 
          LEFT JOIN users p ON s.parent_id = p.id 
          WHERE s.id = ?`,
-        [id]
+        [id],
       );
       return rows[0] ? StudentService.mapDbToApi(rows[0]) : null;
     } catch (error) {
@@ -207,7 +202,7 @@ export class StudentService {
          LEFT JOIN users p ON s.parent_id = p.id 
          WHERE s.parent_id = ? 
          ORDER BY s.grade_level, s.last_name, s.first_name`,
-        [parent_id]
+        [parent_id],
       );
       return rows.map((row) => StudentService.mapDbToApi(row));
     } catch (error) {
@@ -226,7 +221,7 @@ export class StudentService {
          LEFT JOIN users p ON s.parent_id = p.id 
          WHERE s.grade_level = ? 
          ORDER BY s.last_name, s.first_name`,
-        [grade_level]
+        [grade_level],
       );
       return rows.map((row) => StudentService.mapDbToApi(row));
     } catch (error) {
@@ -243,7 +238,7 @@ export class StudentService {
 
       // Generate unique parent key
       const parentKey = await generateUniqueParentKey(
-        StudentService.parentKeyExists
+        StudentService.parentKeyExists,
       );
 
       const [result] = await pool.query(
@@ -255,12 +250,12 @@ export class StudentService {
           dateOfBirth,
           gradeLevel,
           parentKey,
-        ]
+        ],
       );
 
       const insertResult = result as any;
       const newStudent = await StudentService.getStudentById(
-        insertResult.insertId
+        insertResult.insertId,
       );
 
       if (!newStudent) {
@@ -279,7 +274,7 @@ export class StudentService {
 
   static async updateStudent(
     id: number,
-    studentData: UpdateStudentData
+    studentData: UpdateStudentData,
   ): Promise<Student | null> {
     try {
       // Convert camelCase to underscore_case for database
@@ -323,7 +318,7 @@ export class StudentService {
 
       const [result] = await pool.query(
         `UPDATE students SET ${updateFields.join(", ")} WHERE id = ?`,
-        updateValues
+        updateValues,
       );
 
       const updateResult = result as any;
@@ -368,7 +363,7 @@ export class StudentService {
          OR s.grade_level LIKE ?
          OR CONCAT(s.first_name, ' ', s.last_name) LIKE ?
          ORDER BY s.last_name, s.first_name`,
-        [searchPattern, searchPattern, searchPattern, searchPattern]
+        [searchPattern, searchPattern, searchPattern, searchPattern],
       );
       return rows.map((row) => StudentService.mapDbToApi(row));
     } catch (error) {
@@ -383,11 +378,11 @@ export class StudentService {
         `SELECT grade_level, COUNT(*) as count 
          FROM students 
          GROUP BY grade_level 
-         ORDER BY grade_level`
+         ORDER BY grade_level`,
       );
 
       const [totalCount] = await pool.query(
-        "SELECT COUNT(*) as total FROM students"
+        "SELECT COUNT(*) as total FROM students",
       );
 
       return {
