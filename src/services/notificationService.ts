@@ -1,6 +1,7 @@
 import pool from "../db";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
 import { keysToCamelCase } from "../utils/caseConverter";
+import { NotificationHub } from "./notificationHub";
 
 export type NotificationType = "COMMENT_ADDED" | "COMMENT_REPLIED";
 
@@ -72,6 +73,7 @@ export class NotificationService {
     `;
 
     await pool.execute(query, params);
+    NotificationHub.notifyUsers(uniqueRecipientIds, "notification:new");
   }
 
   static async getUserNotifications(
@@ -128,7 +130,12 @@ export class NotificationService {
       [notificationId, userId],
     );
 
-    return result.affectedRows > 0;
+    const updated = result.affectedRows > 0;
+    if (updated) {
+      NotificationHub.notifyUser(userId, "notification:update");
+    }
+
+    return updated;
   }
 
   static async markAllAsRead(userId: number): Promise<number> {
@@ -138,6 +145,10 @@ export class NotificationService {
        WHERE recipient_user_id = ? AND is_read = 0`,
       [userId],
     );
+
+    if (result.affectedRows > 0) {
+      NotificationHub.notifyUser(userId, "notification:update");
+    }
 
     return result.affectedRows;
   }

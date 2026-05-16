@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationService = void 0;
 const db_1 = __importDefault(require("../db"));
 const caseConverter_1 = require("../utils/caseConverter");
+const notificationHub_1 = require("./notificationHub");
 class NotificationService {
     static async createForUsers(input) {
         const uniqueRecipientIds = Array.from(new Set(input.recipientUserIds)).filter((id) => Number.isInteger(id) && id > 0);
@@ -39,6 +40,7 @@ class NotificationService {
       ) VALUES ${values}
     `;
         await db_1.default.execute(query, params);
+        notificationHub_1.NotificationHub.notifyUsers(uniqueRecipientIds, "notification:new");
     }
     static async getUserNotifications(userId, limit = 30, unreadOnly = false) {
         const safeLimit = Number.isFinite(limit)
@@ -72,12 +74,19 @@ class NotificationService {
         const [result] = await db_1.default.execute(`UPDATE notifications
        SET is_read = 1, read_at = CURRENT_TIMESTAMP
        WHERE id = ? AND recipient_user_id = ?`, [notificationId, userId]);
-        return result.affectedRows > 0;
+        const updated = result.affectedRows > 0;
+        if (updated) {
+            notificationHub_1.NotificationHub.notifyUser(userId, "notification:update");
+        }
+        return updated;
     }
     static async markAllAsRead(userId) {
         const [result] = await db_1.default.execute(`UPDATE notifications
        SET is_read = 1, read_at = CURRENT_TIMESTAMP
        WHERE recipient_user_id = ? AND is_read = 0`, [userId]);
+        if (result.affectedRows > 0) {
+            notificationHub_1.NotificationHub.notifyUser(userId, "notification:update");
+        }
         return result.affectedRows;
     }
 }

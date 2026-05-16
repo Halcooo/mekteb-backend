@@ -8,6 +8,7 @@ const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
+const http_1 = require("http");
 // Load environment variables
 const envName = process.env.NODE_ENV ?? "development";
 const envPath = path_1.default.resolve(process.cwd(), `.env.${envName}`);
@@ -28,6 +29,7 @@ const imageRoutes_1 = __importDefault(require("./routes/imageRoutes"));
 const commentRoutes_1 = __importDefault(require("./routes/commentRoutes"));
 const parentRoutes_1 = __importDefault(require("./routes/parentRoutes"));
 const notificationRoutes_1 = __importDefault(require("./routes/notificationRoutes"));
+const notificationHub_1 = require("./services/notificationHub");
 const app = (0, express_1.default)();
 const API_PREFIX = "/backend/api";
 // CORS configuration
@@ -68,4 +70,6 @@ app.get("/", (req, res) => {
 });
 // Use cPanel-provided port
 const PORT = process.env.PORT || 5000; // fallback for local dev
-app.listen(PORT);
+const server = (0, http_1.createServer)(app);
+notificationHub_1.NotificationHub.init(server);
+server.listen(PORT);

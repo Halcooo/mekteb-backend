@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
+import { createServer } from "http";
 
 // Load environment variables
 const envName = process.env.NODE_ENV ?? "development";
@@ -24,6 +25,7 @@ import imageRoutes from "./routes/imageRoutes";
 import commentRoutes from "./routes/commentRoutes";
 import parentRoutes from "./routes/parentRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
+import { NotificationHub } from "./services/notificationHub";
 
 const app = express();
 const API_PREFIX = "/backend/api";
@@ -73,4 +75,7 @@ app.get("/", (req, res) => {
 
 // Use cPanel-provided port
 const PORT = process.env.PORT || 5000; // fallback for local dev
-app.listen(PORT);
+const server = createServer(app);
+NotificationHub.init(server);
+
+server.listen(PORT);
