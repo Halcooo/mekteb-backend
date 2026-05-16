@@ -1,5 +1,6 @@
 import pool from "../db";
 import { keysToCamelCase, keysToSnakeCase } from "../utils/caseConverter";
+import { normalizeDateOnlyInput } from "../utils/dateInput";
 
 export interface StudentComment {
   id: number;
@@ -36,7 +37,7 @@ export class CommentService {
   static async getStudentComments(
     studentId: number,
     date?: string,
-    authorRole?: string
+    authorRole?: string,
   ): Promise<StudentComment[]> {
     try {
       let query = `
@@ -56,10 +57,11 @@ export class CommentService {
       `;
 
       const params: any[] = [studentId];
+      const normalizedDate = normalizeDateOnlyInput(date);
 
-      if (date) {
+      if (normalizedDate) {
         query += " AND c.date = ?";
-        params.push(date);
+        params.push(normalizedDate);
       }
 
       if (authorRole) {
@@ -82,6 +84,11 @@ export class CommentService {
   // Get all comments for a specific date (admin view)
   static async getDailyComments(date: string): Promise<StudentComment[]> {
     try {
+      const normalizedDate = normalizeDateOnlyInput(date);
+      if (!normalizedDate) {
+        throw new Error("Invalid date format");
+      }
+
       const query = `
         SELECT 
           c.*,
@@ -99,7 +106,7 @@ export class CommentService {
         ORDER BY s.grade_level, s.last_name, s.first_name, c.created_at ASC
       `;
 
-      const [rows] = await pool.execute(query, [date]);
+      const [rows] = await pool.execute(query, [normalizedDate]);
 
       return (rows as any[]).map((row) => keysToCamelCase<StudentComment>(row));
     } catch (error) {
@@ -126,6 +133,7 @@ export class CommentService {
         page = 1,
         limit = 50,
       } = filters;
+      const normalizedDate = normalizeDateOnlyInput(date);
 
       let whereConditions: string[] = [];
       let params: any[] = [];
@@ -135,9 +143,9 @@ export class CommentService {
         params.push(studentId);
       }
 
-      if (date) {
+      if (normalizedDate) {
         whereConditions.push("c.date = ?");
-        params.push(date);
+        params.push(normalizedDate);
       }
 
       if (authorRole) {
@@ -194,7 +202,7 @@ export class CommentService {
       const [rows] = await pool.execute(query, [...params, limit, offset]);
 
       const comments = (rows as any[]).map((row) =>
-        keysToCamelCase<StudentComment>(row)
+        keysToCamelCase<StudentComment>(row),
       );
 
       return { comments, total };
@@ -206,9 +214,14 @@ export class CommentService {
 
   // Create a new comment
   static async createComment(
-    commentData: CreateCommentData
+    commentData: CreateCommentData,
   ): Promise<StudentComment> {
     try {
+      const normalizedDate = normalizeDateOnlyInput(commentData.date);
+      if (!normalizedDate) {
+        throw new Error("Invalid date format");
+      }
+
       const dbData = keysToSnakeCase(commentData) as any;
 
       const query = `
@@ -222,7 +235,7 @@ export class CommentService {
         commentData.authorId,
         commentData.authorRole,
         commentData.content,
-        commentData.date,
+        normalizedDate,
         commentData.parentCommentId || null,
       ]);
 
@@ -270,7 +283,7 @@ export class CommentService {
   static async updateComment(
     id: number,
     updateData: UpdateCommentData,
-    authorId: number
+    authorId: number,
   ): Promise<StudentComment> {
     try {
       // First check if the comment exists and belongs to the author
@@ -321,7 +334,7 @@ export class CommentService {
 
   // Get comment thread (parent comment + all replies)
   static async getCommentThread(
-    parentCommentId: number
+    parentCommentId: number,
   ): Promise<StudentComment[]> {
     try {
       const query = `

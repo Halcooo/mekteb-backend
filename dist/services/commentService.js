@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CommentService = void 0;
 const db_1 = __importDefault(require("../db"));
 const caseConverter_1 = require("../utils/caseConverter");
+const dateInput_1 = require("../utils/dateInput");
 class CommentService {
     // Get comments for a student on a specific date
     static async getStudentComments(studentId, date, authorRole) {
@@ -26,9 +27,10 @@ class CommentService {
         WHERE c.student_id = ?
       `;
             const params = [studentId];
-            if (date) {
+            const normalizedDate = (0, dateInput_1.normalizeDateOnlyInput)(date);
+            if (normalizedDate) {
                 query += " AND c.date = ?";
-                params.push(date);
+                params.push(normalizedDate);
             }
             if (authorRole) {
                 query += " AND c.author_role = ?";
@@ -47,6 +49,10 @@ class CommentService {
     // Get all comments for a specific date (admin view)
     static async getDailyComments(date) {
         try {
+            const normalizedDate = (0, dateInput_1.normalizeDateOnlyInput)(date);
+            if (!normalizedDate) {
+                throw new Error("Invalid date format");
+            }
             const query = `
         SELECT 
           c.*,
@@ -63,7 +69,7 @@ class CommentService {
         WHERE c.date = ?
         ORDER BY s.grade_level, s.last_name, s.first_name, c.created_at ASC
       `;
-            const [rows] = await db_1.default.execute(query, [date]);
+            const [rows] = await db_1.default.execute(query, [normalizedDate]);
             return rows.map((row) => (0, caseConverter_1.keysToCamelCase)(row));
         }
         catch (error) {
@@ -75,15 +81,16 @@ class CommentService {
     static async getComments(filters) {
         try {
             const { studentId, date, authorRole, parentCommentId, page = 1, limit = 50, } = filters;
+            const normalizedDate = (0, dateInput_1.normalizeDateOnlyInput)(date);
             let whereConditions = [];
             let params = [];
             if (studentId) {
                 whereConditions.push("c.student_id = ?");
                 params.push(studentId);
             }
-            if (date) {
+            if (normalizedDate) {
                 whereConditions.push("c.date = ?");
-                params.push(date);
+                params.push(normalizedDate);
             }
             if (authorRole) {
                 whereConditions.push("c.author_role = ?");
@@ -142,6 +149,10 @@ class CommentService {
     // Create a new comment
     static async createComment(commentData) {
         try {
+            const normalizedDate = (0, dateInput_1.normalizeDateOnlyInput)(commentData.date);
+            if (!normalizedDate) {
+                throw new Error("Invalid date format");
+            }
             const dbData = (0, caseConverter_1.keysToSnakeCase)(commentData);
             const query = `
         INSERT INTO student_comments 
@@ -153,7 +164,7 @@ class CommentService {
                 commentData.authorId,
                 commentData.authorRole,
                 commentData.content,
-                commentData.date,
+                normalizedDate,
                 commentData.parentCommentId || null,
             ]);
             const insertId = result.insertId;

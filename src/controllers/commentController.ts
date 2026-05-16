@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { CommentService, CreateCommentData } from "../services/commentService";
 import { ParentService } from "../services/parentService";
 import { NotificationService } from "../services/notificationService";
+import { normalizeDateOnlyInput } from "../utils/dateInput";
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -24,7 +25,7 @@ export class CommentController {
 
       const filters = {
         studentId: studentId ? parseInt(studentId as string) : undefined,
-        date: date as string,
+        date: normalizeDateOnlyInput(date) || undefined,
         authorRole: authorRole as string,
         parentCommentId: parentCommentId
           ? parseInt(parentCommentId as string)
@@ -67,6 +68,7 @@ export class CommentController {
     try {
       const studentId = parseInt(req.params.studentId);
       const { date, authorRole } = req.query;
+      const normalizedDate = normalizeDateOnlyInput(date);
 
       if (isNaN(studentId)) {
         res.status(400).json({
@@ -94,7 +96,7 @@ export class CommentController {
 
       const comments = await CommentService.getStudentComments(
         studentId,
-        date as string,
+        normalizedDate || undefined,
         authorRole as string,
       );
 
@@ -119,11 +121,12 @@ export class CommentController {
   ): Promise<void> {
     try {
       const { date } = req.params;
+      const normalizedDate = normalizeDateOnlyInput(date);
 
-      if (!date) {
+      if (!normalizedDate) {
         res.status(400).json({
           success: false,
-          error: "Date is required",
+          error: "Date must be in YYYY-MM-DD format",
         });
         return;
       }
@@ -137,7 +140,7 @@ export class CommentController {
         return;
       }
 
-      const comments = await CommentService.getDailyComments(date);
+      const comments = await CommentService.getDailyComments(normalizedDate);
 
       res.json({
         success: true,
@@ -160,6 +163,7 @@ export class CommentController {
   ): Promise<void> {
     try {
       const { studentId, content, date, parentCommentId } = req.body;
+      const normalizedDate = normalizeDateOnlyInput(date);
 
       if (!req.user) {
         res.status(401).json({
@@ -169,10 +173,10 @@ export class CommentController {
         return;
       }
 
-      if (!studentId || !content || !date) {
+      if (!studentId || !content || !normalizedDate) {
         res.status(400).json({
           success: false,
-          error: "Student ID, content, and date are required",
+          error: "Student ID, content, and valid date are required",
         });
         return;
       }
@@ -262,7 +266,7 @@ export class CommentController {
         authorId: req.user.userId,
         authorRole,
         content: content.trim(),
-        date,
+        date: normalizedDate,
         parentCommentId: parsedParentCommentId,
       };
 

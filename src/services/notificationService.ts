@@ -2,6 +2,7 @@ import pool from "../db";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
 import { keysToCamelCase } from "../utils/caseConverter";
 import { NotificationHub } from "./notificationHub";
+import { normalizeDateOnlyInput } from "../utils/dateInput";
 
 export type NotificationType = "COMMENT_ADDED" | "COMMENT_REPLIED";
 
@@ -47,6 +48,7 @@ export class NotificationService {
       .map(() => "(?, ?, ?, ?, ?, ?, ?, ?)")
       .join(",");
     const params: Array<number | string | null> = [];
+    const normalizedCommentDate = normalizeDateOnlyInput(input.commentDate);
 
     uniqueRecipientIds.forEach((recipientUserId) => {
       params.push(recipientUserId);
@@ -56,7 +58,7 @@ export class NotificationService {
       params.push(input.message);
       params.push(input.studentId ?? null);
       params.push(input.commentId ?? null);
-      params.push(input.commentDate ?? null);
+      params.push(normalizedCommentDate ?? null);
     });
 
     const query = `

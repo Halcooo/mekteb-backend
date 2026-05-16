@@ -4,6 +4,7 @@ exports.CommentController = void 0;
 const commentService_1 = require("../services/commentService");
 const parentService_1 = require("../services/parentService");
 const notificationService_1 = require("../services/notificationService");
+const dateInput_1 = require("../utils/dateInput");
 class CommentController {
     // Get comments with filters
     static async getComments(req, res) {
@@ -11,7 +12,7 @@ class CommentController {
             const { studentId, date, authorRole, parentCommentId, page, limit } = req.query;
             const filters = {
                 studentId: studentId ? parseInt(studentId) : undefined,
-                date: date,
+                date: (0, dateInput_1.normalizeDateOnlyInput)(date) || undefined,
                 authorRole: authorRole,
                 parentCommentId: parentCommentId
                     ? parseInt(parentCommentId)
@@ -48,6 +49,7 @@ class CommentController {
         try {
             const studentId = parseInt(req.params.studentId);
             const { date, authorRole } = req.query;
+            const normalizedDate = (0, dateInput_1.normalizeDateOnlyInput)(date);
             if (isNaN(studentId)) {
                 res.status(400).json({
                     success: false,
@@ -66,7 +68,7 @@ class CommentController {
                     return;
                 }
             }
-            const comments = await commentService_1.CommentService.getStudentComments(studentId, date, authorRole);
+            const comments = await commentService_1.CommentService.getStudentComments(studentId, normalizedDate || undefined, authorRole);
             res.json({
                 success: true,
                 data: comments,
@@ -85,10 +87,11 @@ class CommentController {
     static async getDailyComments(req, res) {
         try {
             const { date } = req.params;
-            if (!date) {
+            const normalizedDate = (0, dateInput_1.normalizeDateOnlyInput)(date);
+            if (!normalizedDate) {
                 res.status(400).json({
                     success: false,
-                    error: "Date is required",
+                    error: "Date must be in YYYY-MM-DD format",
                 });
                 return;
             }
@@ -100,7 +103,7 @@ class CommentController {
                 });
                 return;
             }
-            const comments = await commentService_1.CommentService.getDailyComments(date);
+            const comments = await commentService_1.CommentService.getDailyComments(normalizedDate);
             res.json({
                 success: true,
                 data: comments,
@@ -119,6 +122,7 @@ class CommentController {
     static async createComment(req, res) {
         try {
             const { studentId, content, date, parentCommentId } = req.body;
+            const normalizedDate = (0, dateInput_1.normalizeDateOnlyInput)(date);
             if (!req.user) {
                 res.status(401).json({
                     success: false,
@@ -126,10 +130,10 @@ class CommentController {
                 });
                 return;
             }
-            if (!studentId || !content || !date) {
+            if (!studentId || !content || !normalizedDate) {
                 res.status(400).json({
                     success: false,
-                    error: "Student ID, content, and date are required",
+                    error: "Student ID, content, and valid date are required",
                 });
                 return;
             }
@@ -201,7 +205,7 @@ class CommentController {
                 authorId: req.user.userId,
                 authorRole,
                 content: content.trim(),
-                date,
+                date: normalizedDate,
                 parentCommentId: parsedParentCommentId,
             };
             const comment = await commentService_1.CommentService.createComment(commentData);

@@ -7,6 +7,7 @@ exports.NotificationService = void 0;
 const db_1 = __importDefault(require("../db"));
 const caseConverter_1 = require("../utils/caseConverter");
 const notificationHub_1 = require("./notificationHub");
+const dateInput_1 = require("../utils/dateInput");
 class NotificationService {
     static async createForUsers(input) {
         const uniqueRecipientIds = Array.from(new Set(input.recipientUserIds)).filter((id) => Number.isInteger(id) && id > 0);
@@ -17,6 +18,7 @@ class NotificationService {
             .map(() => "(?, ?, ?, ?, ?, ?, ?, ?)")
             .join(",");
         const params = [];
+        const normalizedCommentDate = (0, dateInput_1.normalizeDateOnlyInput)(input.commentDate);
         uniqueRecipientIds.forEach((recipientUserId) => {
             params.push(recipientUserId);
             params.push(input.actorUserId ?? null);
@@ -25,7 +27,7 @@ class NotificationService {
             params.push(input.message);
             params.push(input.studentId ?? null);
             params.push(input.commentId ?? null);
-            params.push(input.commentDate ?? null);
+            params.push(normalizedCommentDate ?? null);
         });
         const query = `
       INSERT INTO notifications (

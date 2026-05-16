@@ -2,22 +2,20 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttendanceController = void 0;
 const attendanceService_1 = require("../services/attendanceService");
+const dateInput_1 = require("../utils/dateInput");
 class AttendanceController {
     static async getAllAttendance(req, res) {
         try {
-            const { date } = req.query;
-            // Validate date format if provided
-            if (date && typeof date === "string") {
-                const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-                if (!dateRegex.test(date)) {
-                    res.status(400).json({
-                        success: false,
-                        error: "Date must be in YYYY-MM-DD format",
-                    });
-                    return;
-                }
+            const { date: rawDate } = req.query;
+            const date = (0, dateInput_1.normalizeDateOnlyInput)(rawDate);
+            if (rawDate !== undefined && !date) {
+                res.status(400).json({
+                    success: false,
+                    error: "Date must be in YYYY-MM-DD format",
+                });
+                return;
             }
-            const attendance = await attendanceService_1.AttendanceService.getAllAttendance(date);
+            const attendance = await attendanceService_1.AttendanceService.getAllAttendance(date || undefined);
             res.json({
                 success: true,
                 data: attendance,
@@ -69,7 +67,9 @@ class AttendanceController {
     static async getAttendanceByStudent(req, res) {
         try {
             const student_id = parseInt(req.params.studentId);
-            const { startDate, endDate } = req.query;
+            const { startDate: rawStartDate, endDate: rawEndDate } = req.query;
+            const startDate = (0, dateInput_1.normalizeDateOnlyInput)(rawStartDate);
+            const endDate = (0, dateInput_1.normalizeDateOnlyInput)(rawEndDate);
             if (isNaN(student_id)) {
                 res.status(400).json({
                     success: false,
@@ -77,25 +77,21 @@ class AttendanceController {
                 });
                 return;
             }
-            // Validate date formats if provided
-            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-            if (startDate &&
-                typeof startDate === "string" &&
-                !dateRegex.test(startDate)) {
+            if (rawStartDate !== undefined && !startDate) {
                 res.status(400).json({
                     success: false,
                     error: "Start date must be in YYYY-MM-DD format",
                 });
                 return;
             }
-            if (endDate && typeof endDate === "string" && !dateRegex.test(endDate)) {
+            if (rawEndDate !== undefined && !endDate) {
                 res.status(400).json({
                     success: false,
                     error: "End date must be in YYYY-MM-DD format",
                 });
                 return;
             }
-            const attendance = await attendanceService_1.AttendanceService.getAttendanceByStudent(student_id, startDate, endDate);
+            const attendance = await attendanceService_1.AttendanceService.getAttendanceByStudent(student_id, startDate || undefined, endDate || undefined);
             res.json({
                 success: true,
                 data: attendance,
@@ -116,10 +112,8 @@ class AttendanceController {
     }
     static async getAttendanceByDate(req, res) {
         try {
-            const { date } = req.params;
-            // Validate date format
-            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-            if (!dateRegex.test(date)) {
+            const date = (0, dateInput_1.normalizeDateOnlyInput)(req.params.date);
+            if (!date) {
                 res.status(400).json({
                     success: false,
                     error: "Date must be in YYYY-MM-DD format",
@@ -146,7 +140,8 @@ class AttendanceController {
     static async getAttendanceByGrade(req, res) {
         try {
             const { grade } = req.params;
-            const { date } = req.query;
+            const { date: rawDate } = req.query;
+            const date = (0, dateInput_1.normalizeDateOnlyInput)(rawDate);
             if (!grade) {
                 res.status(400).json({
                     success: false,
@@ -154,18 +149,14 @@ class AttendanceController {
                 });
                 return;
             }
-            // Validate date format if provided
-            if (date && typeof date === "string") {
-                const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-                if (!dateRegex.test(date)) {
-                    res.status(400).json({
-                        success: false,
-                        error: "Date must be in YYYY-MM-DD format",
-                    });
-                    return;
-                }
+            if (rawDate !== undefined && !date) {
+                res.status(400).json({
+                    success: false,
+                    error: "Date must be in YYYY-MM-DD format",
+                });
+                return;
             }
-            const attendance = await attendanceService_1.AttendanceService.getAttendanceByGrade(grade, date);
+            const attendance = await attendanceService_1.AttendanceService.getAttendanceByGrade(grade, date || undefined);
             res.json({
                 success: true,
                 data: attendance,
@@ -186,8 +177,9 @@ class AttendanceController {
     static async createAttendance(req, res) {
         try {
             const { student_id, date, status } = req.body;
+            const normalizedDate = (0, dateInput_1.normalizeDateOnlyInput)(date);
             // Basic validation
-            if (!student_id || !date || !status) {
+            if (!student_id || !normalizedDate || !status) {
                 res.status(400).json({
                     success: false,
                     error: "student_id, date, and status are required",
@@ -199,15 +191,6 @@ class AttendanceController {
                 res.status(400).json({
                     success: false,
                     error: "student_id must be a valid positive number",
-                });
-                return;
-            }
-            // Validate date format
-            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-            if (!dateRegex.test(date)) {
-                res.status(400).json({
-                    success: false,
-                    error: "date must be in YYYY-MM-DD format",
                 });
                 return;
             }
@@ -227,7 +210,7 @@ class AttendanceController {
             }
             const newAttendance = await attendanceService_1.AttendanceService.createAttendance({
                 student_id,
-                date,
+                date: normalizedDate,
                 status,
             });
             res.status(201).json({
@@ -337,7 +320,9 @@ class AttendanceController {
     static async getStudentAttendanceStats(req, res) {
         try {
             const student_id = parseInt(req.params.studentId);
-            const { startDate, endDate } = req.query;
+            const { startDate: rawStartDate, endDate: rawEndDate } = req.query;
+            const startDate = (0, dateInput_1.normalizeDateOnlyInput)(rawStartDate);
+            const endDate = (0, dateInput_1.normalizeDateOnlyInput)(rawEndDate);
             if (isNaN(student_id)) {
                 res.status(400).json({
                     success: false,
@@ -345,25 +330,21 @@ class AttendanceController {
                 });
                 return;
             }
-            // Validate date formats if provided
-            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-            if (startDate &&
-                typeof startDate === "string" &&
-                !dateRegex.test(startDate)) {
+            if (rawStartDate !== undefined && !startDate) {
                 res.status(400).json({
                     success: false,
                     error: "Start date must be in YYYY-MM-DD format",
                 });
                 return;
             }
-            if (endDate && typeof endDate === "string" && !dateRegex.test(endDate)) {
+            if (rawEndDate !== undefined && !endDate) {
                 res.status(400).json({
                     success: false,
                     error: "End date must be in YYYY-MM-DD format",
                 });
                 return;
             }
-            const stats = await attendanceService_1.AttendanceService.getStudentAttendanceStats(student_id, startDate, endDate);
+            const stats = await attendanceService_1.AttendanceService.getStudentAttendanceStats(student_id, startDate || undefined, endDate || undefined);
             res.json({
                 success: true,
                 data: stats,
@@ -400,10 +381,10 @@ class AttendanceController {
                 "LATE",
                 "EXCUSED",
             ];
-            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
             for (let i = 0; i < attendanceList.length; i++) {
                 const record = attendanceList[i];
-                if (!record.student_id || !record.date || !record.status) {
+                const normalizedRecordDate = (0, dateInput_1.normalizeDateOnlyInput)(record.date);
+                if (!record.student_id || !normalizedRecordDate || !record.status) {
                     res.status(400).json({
                         success: false,
                         error: `Record ${i + 1}: student_id, date, and status are required`,
@@ -417,13 +398,6 @@ class AttendanceController {
                     });
                     return;
                 }
-                if (!dateRegex.test(record.date)) {
-                    res.status(400).json({
-                        success: false,
-                        error: `Record ${i + 1}: date must be in YYYY-MM-DD format`,
-                    });
-                    return;
-                }
                 if (!validStatuses.includes(record.status)) {
                     res.status(400).json({
                         success: false,
@@ -431,6 +405,7 @@ class AttendanceController {
                     });
                     return;
                 }
+                record.date = normalizedRecordDate;
             }
             const createdCount = await attendanceService_1.AttendanceService.createBulkAttendance(attendanceList);
             res.status(201).json({
@@ -450,10 +425,8 @@ class AttendanceController {
     }
     static async getAttendanceSummary(req, res) {
         try {
-            const { date } = req.params;
-            // Validate date format
-            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-            if (!dateRegex.test(date)) {
+            const date = (0, dateInput_1.normalizeDateOnlyInput)(req.params.date);
+            if (!date) {
                 res.status(400).json({
                     success: false,
                     error: "Date must be in YYYY-MM-DD format",

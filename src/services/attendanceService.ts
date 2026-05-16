@@ -1,5 +1,6 @@
 import pool from "../db";
 import { RowDataPacket } from "mysql2";
+import { normalizeDateOnlyInput } from "../utils/dateInput";
 
 export type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED";
 
@@ -39,6 +40,7 @@ export interface AttendanceStats {
 export class AttendanceService {
   static async getAllAttendance(date?: string): Promise<Attendance[]> {
     try {
+      const normalizedDate = normalizeDateOnlyInput(date);
       let query = `
         SELECT a.*, 
                s.first_name as student_first_name, 
@@ -52,9 +54,9 @@ export class AttendanceService {
 
       const params: any[] = [];
 
-      if (date) {
+      if (normalizedDate) {
         query += " WHERE a.date = ?";
-        params.push(date);
+        params.push(normalizedDate);
       }
 
       query +=
@@ -95,6 +97,8 @@ export class AttendanceService {
     endDate?: string,
   ): Promise<Attendance[]> {
     try {
+      const normalizedStartDate = normalizeDateOnlyInput(startDate);
+      const normalizedEndDate = normalizeDateOnlyInput(endDate);
       let query = `
         SELECT a.*, 
                s.first_name as student_first_name, 
@@ -109,15 +113,15 @@ export class AttendanceService {
 
       const params: any[] = [student_id];
 
-      if (startDate && endDate) {
+      if (normalizedStartDate && normalizedEndDate) {
         query += " AND a.date BETWEEN ? AND ?";
-        params.push(startDate, endDate);
-      } else if (startDate) {
+        params.push(normalizedStartDate, normalizedEndDate);
+      } else if (normalizedStartDate) {
         query += " AND a.date >= ?";
-        params.push(startDate);
-      } else if (endDate) {
+        params.push(normalizedStartDate);
+      } else if (normalizedEndDate) {
         query += " AND a.date <= ?";
-        params.push(endDate);
+        params.push(normalizedEndDate);
       }
 
       query += " ORDER BY a.date DESC";
@@ -132,6 +136,11 @@ export class AttendanceService {
 
   static async getAttendanceByDate(date: string): Promise<Attendance[]> {
     try {
+      const normalizedDate = normalizeDateOnlyInput(date);
+      if (!normalizedDate) {
+        throw new Error("Invalid date format");
+      }
+
       const [rows] = await pool.query<Attendance[]>(
         `SELECT a.*, 
                 s.first_name as student_first_name, 
@@ -143,7 +152,7 @@ export class AttendanceService {
          LEFT JOIN users u ON s.parent_id = u.id
          WHERE a.date = ?
          ORDER BY s.grade_level, s.last_name, s.first_name`,
-        [date],
+        [normalizedDate],
       );
       return rows;
     } catch (error) {
@@ -157,6 +166,7 @@ export class AttendanceService {
     date?: string,
   ): Promise<Attendance[]> {
     try {
+      const normalizedDate = normalizeDateOnlyInput(date);
       let query = `
         SELECT a.*, 
                s.first_name as student_first_name, 
@@ -171,9 +181,9 @@ export class AttendanceService {
 
       const params: any[] = [grade_level];
 
-      if (date) {
+      if (normalizedDate) {
         query += " AND a.date = ?";
-        params.push(date);
+        params.push(normalizedDate);
       }
 
       query += " ORDER BY a.date DESC, s.last_name, s.first_name";
@@ -190,11 +200,19 @@ export class AttendanceService {
     attendanceData: CreateAttendanceData,
   ): Promise<Attendance> {
     try {
-      const { student_id, date, status } = attendanceData;
+      const { student_id, status } = attendanceData;
+      const normalizedDate = normalizeDateOnlyInput(attendanceData.date);
+
+      if (!normalizedDate) {
+        throw new Error("Invalid date format");
+      }
 
       // Check if attendance already exists for this student on this date
       const existingAttendance =
-        await AttendanceService.getStudentAttendanceByDate(student_id, date);
+        await AttendanceService.getStudentAttendanceByDate(
+          student_id,
+          normalizedDate,
+        );
       if (existingAttendance) {
         const updatedAttendance = await AttendanceService.updateAttendance(
           existingAttendance.id,
@@ -210,7 +228,7 @@ export class AttendanceService {
 
       const [result] = await pool.query(
         "INSERT INTO attendance (student_id, date, status, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())",
-        [student_id, date, status],
+        [student_id, normalizedDate, status],
       );
 
       const insertResult = result as any;
@@ -276,6 +294,11 @@ export class AttendanceService {
     date: string,
   ): Promise<Attendance | null> {
     try {
+      const normalizedDate = normalizeDateOnlyInput(date);
+      if (!normalizedDate) {
+        throw new Error("Invalid date format");
+      }
+
       const [rows] = await pool.query<Attendance[]>(
         `SELECT a.*, 
                 s.first_name as student_first_name, 
@@ -286,7 +309,7 @@ export class AttendanceService {
          WHERE a.student_id = ? AND a.date = ?
          ORDER BY a.updated_at DESC, a.id DESC
          LIMIT 1`,
-        [student_id, date],
+        [student_id, normalizedDate],
       );
       return rows[0] || null;
     } catch (error) {
@@ -301,6 +324,8 @@ export class AttendanceService {
     endDate?: string,
   ): Promise<AttendanceStats> {
     try {
+      const normalizedStartDate = normalizeDateOnlyInput(startDate);
+      const normalizedEndDate = normalizeDateOnlyInput(endDate);
       let query = `
         SELECT 
           COUNT(*) as totalDays,
@@ -314,15 +339,15 @@ export class AttendanceService {
 
       const params: any[] = [student_id];
 
-      if (startDate && endDate) {
+      if (normalizedStartDate && normalizedEndDate) {
         query += " AND date BETWEEN ? AND ?";
-        params.push(startDate, endDate);
-      } else if (startDate) {
+        params.push(normalizedStartDate, normalizedEndDate);
+      } else if (normalizedStartDate) {
         query += " AND date >= ?";
-        params.push(startDate);
-      } else if (endDate) {
+        params.push(normalizedStartDate);
+      } else if (normalizedEndDate) {
         query += " AND date <= ?";
-        params.push(endDate);
+        params.push(normalizedEndDate);
       }
 
       const [rows] = await pool.query(query, params);
@@ -393,6 +418,11 @@ export class AttendanceService {
     byGrade: any[];
   }> {
     try {
+      const normalizedDate = normalizeDateOnlyInput(date);
+      if (!normalizedDate) {
+        throw new Error("Invalid date format");
+      }
+
       // First, get total student count and status counts
       const [totalResult] = await pool.query<any[]>(
         `SELECT COUNT(*) as total FROM students`,
@@ -407,7 +437,7 @@ export class AttendanceService {
           COALESCE(SUM(CASE WHEN status = 'EXCUSED' THEN 1 ELSE 0 END), 0) as excusedCount
          FROM attendance 
          WHERE date = ?`,
-        [date],
+        [normalizedDate],
       );
 
       const presentCount = Number(statusResult[0]?.presentCount) || 0;
@@ -431,7 +461,7 @@ export class AttendanceService {
          LEFT JOIN attendance a ON a.student_id = s.id AND a.date = ?
          GROUP BY s.grade_level
          ORDER BY s.grade_level`,
-        [date],
+        [normalizedDate],
       );
 
       const byGrade = (rows as any[]).map((row) => ({
