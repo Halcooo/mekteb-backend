@@ -1,21 +1,11 @@
 import { Request, Response } from "express";
-import {
-  AuthService,
-  LoginData,
-  RegisterData,
-} from "../services/authService";
+import { AuthService, LoginData, RegisterData } from "../services/authService";
 
 export class AuthController {
   static async register(req: Request, res: Response): Promise<void> {
     try {
-      const {
-        firstName,
-        lastName,
-        username,
-        email,
-        password,
-        role = "student",
-      }: RegisterData = req.body;
+      const { firstName, lastName, username, email, password }: RegisterData =
+        req.body;
 
       // Basic validation
       if (!firstName || !lastName || !username || !email || !password) {
@@ -52,7 +42,6 @@ export class AuthController {
         username,
         email,
         password,
-        role,
       });
 
       if (result.success) {

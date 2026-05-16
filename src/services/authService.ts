@@ -13,7 +13,6 @@ export interface RegisterData {
   username: string;
   email: string;
   password: string;
-  role: string;
 }
 
 export interface AuthResult {
@@ -38,7 +37,7 @@ export class AuthService {
 
   static async comparePassword(
     password: string,
-    hashedPassword: string
+    hashedPassword: string,
   ): Promise<boolean> {
     try {
       return await bcrypt.compare(password, hashedPassword);
@@ -50,14 +49,9 @@ export class AuthService {
 
   static async register(userData: RegisterData): Promise<AuthResult> {
     try {
-      const {
-        firstName,
-        lastName,
-        username,
-        email,
-        password,
-        role = "user",
-      } = userData;
+      const { firstName, lastName, username, email, password } = userData;
+
+      const role = "parent";
 
       // Check if user already exists (email or username)
       const existingUserByEmail = await UserService.getUserByEmail(email);
@@ -68,9 +62,8 @@ export class AuthService {
         };
       }
 
-      const existingUserByUsername = await UserService.getUserByUsername(
-        username
-      );
+      const existingUserByUsername =
+        await UserService.getUserByUsername(username);
       if (existingUserByUsername) {
         return {
           success: false,
@@ -136,7 +129,7 @@ export class AuthService {
       // Compare password
       const isPasswordValid = await AuthService.comparePassword(
         password,
-        user.password
+        user.password,
       );
       if (!isPasswordValid) {
         return {

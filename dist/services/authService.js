@@ -28,7 +28,8 @@ class AuthService {
     }
     static async register(userData) {
         try {
-            const { firstName, lastName, username, email, password, role = "user", } = userData;
+            const { firstName, lastName, username, email, password } = userData;
+            const role = "parent";
             // Check if user already exists (email or username)
             const existingUserByEmail = await userService_1.UserService.getUserByEmail(email);
             if (existingUserByEmail) {

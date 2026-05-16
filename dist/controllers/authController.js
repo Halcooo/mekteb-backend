@@ -5,7 +5,7 @@ const authService_1 = require("../services/authService");
 class AuthController {
     static async register(req, res) {
         try {
-            const { firstName, lastName, username, email, password, role = "student", } = req.body;
+            const { firstName, lastName, username, email, password } = req.body;
             // Basic validation
             if (!firstName || !lastName || !username || !email || !password) {
                 res.status(400).json({
@@ -37,7 +37,6 @@ class AuthController {
                 username,
                 email,
                 password,
-                role,
             });
             if (result.success) {
                 res.status(201).json({
