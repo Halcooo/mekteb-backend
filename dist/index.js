@@ -71,5 +71,15 @@ app.get("/", (req, res) => {
 // Use cPanel-provided port
 const PORT = process.env.PORT || 5000; // fallback for local dev
 const server = (0, http_1.createServer)(app);
-notificationHub_1.NotificationHub.init(server);
-server.listen(PORT);
+try {
+    notificationHub_1.NotificationHub.init(server);
+}
+catch (error) {
+    console.error("[Startup] Notification hub initialization failed. Continuing without live websocket notifications.", error);
+}
+server.listen(PORT, () => {
+    console.log(`[Startup] Backend listening on port ${PORT}`);
+});
+server.on("error", (error) => {
+    console.error("[Startup] Server failed to start:", error);
+});

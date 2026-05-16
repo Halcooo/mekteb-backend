@@ -1,18 +1,26 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationHub = void 0;
-const ws_1 = require("ws");
 const jwtService_1 = require("./jwtService");
 class NotificationHubService {
     constructor() {
         this.wss = null;
         this.clientsByUser = new Map();
+        this.wsOpenState = 1;
     }
     init(server) {
         if (this.wss) {
             return;
         }
-        this.wss = new ws_1.WebSocketServer({
+        const wsModule = this.loadWsModule();
+        if (!wsModule) {
+            console.warn("[NotificationHub] WebSocket module is unavailable. Continuing without live notification push.");
+            return;
+        }
+        if (typeof wsModule.WebSocket?.OPEN === "number") {
+            this.wsOpenState = wsModule.WebSocket.OPEN;
+        }
+        this.wss = new wsModule.WebSocketServer({
             server,
             path: "/backend/ws/notifications",
         });
@@ -89,10 +97,18 @@ class NotificationHubService {
         }
         const serialized = JSON.stringify(payload);
         clients.forEach((socket) => {
-            if (socket.readyState === ws_1.WebSocket.OPEN) {
+            if (socket.readyState === this.wsOpenState) {
                 socket.send(serialized);
             }
         });
+    }
+    loadWsModule() {
+        try {
+            return require("ws");
+        }
+        catch {
+            return null;
+        }
     }
 }
 exports.NotificationHub = new NotificationHubService();
