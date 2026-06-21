@@ -1,5 +1,4 @@
 ---
 deployment:
   tasks:
-    # Safely syncs your built backend files, leaving your 'uploads' folder completely untouched
     - /usr/bin/rsync -av --delete --exclude 'uploads' dist/ /storage1/mektebpa/api.mekteb-pazaric.com/
