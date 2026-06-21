@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    # Syncs all files from the repo root, but excludes Git files and the uploads folder
+    - /usr/bin/rsync -av --delete --exclude '.git*' --exclude 'uploads' ./ /storage1/mektebpa/api.mekteb-pazaric.com/
