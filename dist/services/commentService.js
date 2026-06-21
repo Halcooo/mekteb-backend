@@ -14,7 +14,7 @@ class CommentService {
             let query = `
         SELECT 
           c.*,
-          u.username as author_name,
+          CONCAT(u.first_name, ' ', u.last_name) as author_name,
           s.first_name,
           s.last_name,
           s.grade_level,
@@ -56,7 +56,7 @@ class CommentService {
             const query = `
         SELECT 
           c.*,
-          u.username as author_name,
+          CONCAT(u.first_name, ' ', u.last_name) as author_name,
           s.first_name,
           s.last_name,
           s.grade_level,
@@ -123,7 +123,7 @@ class CommentService {
             const query = `
         SELECT 
           c.*,
-          u.username as author_name,
+          CONCAT(u.first_name, ' ', u.last_name) as author_name,
           s.first_name,
           s.last_name,
           s.grade_level,
@@ -181,7 +181,7 @@ class CommentService {
             const query = `
         SELECT 
           c.*,
-          u.username as author_name,
+          CONCAT(u.first_name, ' ', u.last_name) as author_name,
           s.first_name,
           s.last_name,
           s.grade_level,
@@ -250,7 +250,7 @@ class CommentService {
             const query = `
         SELECT 
           c.*,
-          u.username as author_name,
+          CONCAT(u.first_name, ' ', u.last_name) as author_name,
           s.first_name,
           s.last_name,
           s.grade_level,
