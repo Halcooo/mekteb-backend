@@ -1,5 +1,5 @@
 ---
 deployment:
   tasks:
-    # Syncs all files from the repo root, but excludes Git files and the uploads folder
-    - /usr/bin/rsync -av --delete --exclude '.git*' --exclude 'uploads' ./ /storage1/mektebpa/api.mekteb-pazaric.com/
+    # Safely syncs your built backend files, leaving your 'uploads' folder completely untouched
+    - /usr/bin/rsync -av --delete --exclude 'uploads' dist/ /storage1/mektebpa/api.mekteb-pazaric.com/
