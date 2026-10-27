@@ -9,6 +9,7 @@ const router = Router();
 
 // Apply authentication to all comment routes
 router.use(authenticateToken);
+router.use(requireRole(["admin", "teacher", "parent", "user"]));
 
 // GET /api/comments - Get comments with filters (admin/teacher/parent)
 router.get("/", CommentController.getComments);
@@ -17,7 +18,7 @@ router.get("/", CommentController.getComments);
 router.get("/student/:studentId", CommentController.getStudentComments);
 
 // GET /api/comments/daily/:date - Get all daily comments (admin/teacher only)
-router.get("/daily/:date", CommentController.getDailyComments);
+router.get("/daily/:date", requireRole(["admin", "teacher"]), CommentController.getDailyComments);
 
 // GET /api/comments/thread/:id - Get comment thread (parent comment + replies)
 router.get("/thread/:id", CommentController.getCommentThread);

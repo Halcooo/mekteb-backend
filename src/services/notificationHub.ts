@@ -1,170 +1,87 @@
-import { Server as HttpServer, IncomingMessage } from "http";
-import { JwtService } from "./jwtService";
+import { Server as HttpServer } from "http";
+import { WebSocket, WebSocketServer } from "ws";
+import { getAllowedOrigins } from "../config/environment";
+import { JwtService, JwtPayload } from "./jwtService";
+import { SessionService } from "./sessionService";
 
-type RuntimeWebSocket = {
-  readyState: number;
-  send: (data: string) => void;
-  close: (code?: number, reason?: string) => void;
-  on: (event: "close" | "error", listener: () => void) => void;
-};
-
-type RuntimeWebSocketServer = {
-  on: (
-    event: "connection",
-    listener: (socket: RuntimeWebSocket, request: IncomingMessage) => void,
-  ) => void;
-};
-
-type WsModule = {
-  WebSocketServer: new (options: {
-    server: HttpServer;
-    path: string;
-  }) => RuntimeWebSocketServer;
-  WebSocket?: {
-    OPEN: number;
-  };
-};
-
-type NotificationEvent = {
-  type: "notification:new" | "notification:update";
-  recipientUserId: number;
-};
+type NotificationEvent = { type: "notification:new" | "notification:update"; recipientUserId: number };
+type Client = { socket: WebSocket; identity: JwtPayload; expiryTimer: NodeJS.Timeout };
 
 class NotificationHubService {
-  private wss: RuntimeWebSocketServer | null = null;
-  private clientsByUser = new Map<number, Set<RuntimeWebSocket>>();
-  private wsOpenState = 1;
+  private wss: WebSocketServer | null = null;
+  private clients = new Set<Client>();
 
   init(server: HttpServer): void {
-    if (this.wss) {
-      return;
-    }
+    if (this.wss) return;
+    const wss = new WebSocketServer({ server, path: "/backend/ws/notifications", maxPayload: 4096 });
+    this.wss = wss;
+    wss.on("connection", (socket, request) => {
+      socket.on('error', () => socket.close());
+      if (!request.headers.origin || !getAllowedOrigins().includes(request.headers.origin)) {
+        socket.close(1008, 'Origin not allowed'); return;
+      }
+      // Never place bearer credentials in a URL or proxy access log.
+      const authenticationTimeout = setTimeout(() => socket.close(1008,'Authentication required'),5000);
+      authenticationTimeout.unref();
+      socket.once('close',()=>clearTimeout(authenticationTimeout));
+      socket.once('message',raw=>{
+        clearTimeout(authenticationTimeout);
+        void (async()=>{
+          try {
+            const message = JSON.parse(raw.toString()) as {type?:string;accessToken?:string};
+            const identity = message.type==='authenticate' && typeof message.accessToken==='string' ? JwtService.verifyAccessToken(message.accessToken) : null;
+            if(!identity || !await SessionService.isSessionActive(identity.sid,identity.userId)) { socket.close(1008,'Unauthorized'); return; }
+            if(this.wss!==wss || socket.readyState!==WebSocket.OPEN)return;
+            const expiryTimer=setTimeout(()=>socket.close(1008,'Token expired'),Math.max(0,identity.exp*1000-Date.now()));
+            expiryTimer.unref();
+            const client={socket,identity,expiryTimer};this.clients.add(client);
+            socket.send(JSON.stringify({type:'ready'}));
+            socket.once('close',()=>{clearTimeout(expiryTimer);this.clients.delete(client);});
+          } catch {socket.close(1011,'Authentication unavailable');}
+        })();
+      });
+    });    server.once("close", () => { if (this.wss === wss) this.close(); });
+  }
 
-    const wsModule = this.loadWsModule();
-    if (!wsModule) {
-      console.warn(
-        "[NotificationHub] WebSocket module is unavailable. Continuing without live notification push.",
-      );
-      return;
-    }
+  // Call before HTTP server.close(): upgraded sockets otherwise keep it waiting.
+  close(): void {
+    const wss = this.wss;
+    if (!wss) return;
+    this.wss = null;
+    for (const client of this.clients) clearTimeout(client.expiryTimer);
+    this.clients.clear();
+    // Include sockets whose asynchronous authentication has not finished yet.
+    for (const socket of wss.clients) socket.terminate();
+    wss.close();
+  }
 
-    if (typeof wsModule.WebSocket?.OPEN === "number") {
-      this.wsOpenState = wsModule.WebSocket.OPEN;
-    }
+  disconnectSession(sessionId: string): void {
+    for (const client of this.clients) if (client.identity.sid === sessionId) client.socket.close(1008, "Session revoked");
+  }
 
-    this.wss = new wsModule.WebSocketServer({
-      server,
-      path: "/backend/ws/notifications",
-    });
-
-    this.wss.on(
-      "connection",
-      (socket: RuntimeWebSocket, request: IncomingMessage) => {
-        const userId = this.resolveUserId(request);
-
-        if (!userId) {
-          socket.close(1008, "Unauthorized");
-          return;
-        }
-
-        this.registerClient(userId, socket);
-
-        socket.on("close", () => {
-          this.unregisterClient(userId, socket);
-        });
-
-        socket.on("error", () => {
-          this.unregisterClient(userId, socket);
-        });
-      },
-    );
+  disconnectUser(userId: number): void {
+    for (const client of this.clients) if (client.identity.userId === userId) client.socket.close(1008, "Session revoked");
   }
 
   notifyUsers(userIds: number[], type: NotificationEvent["type"]): void {
-    const uniqueUserIds = Array.from(new Set(userIds)).filter(
-      (id) => Number.isInteger(id) && id > 0,
-    );
-
-    uniqueUserIds.forEach((userId) => {
-      this.publishToUser(userId, {
-        type,
-        recipientUserId: userId,
-      });
-    });
+    for (const userId of new Set(userIds)) this.notifyUser(userId, type);
   }
 
   notifyUser(userId: number, type: NotificationEvent["type"]): void {
-    if (!Number.isInteger(userId) || userId <= 0) {
-      return;
+    if (!Number.isSafeInteger(userId) || userId <= 0) return;
+    for (const client of this.clients) {
+      if (client.identity.userId === userId) void this.publish(client, { type, recipientUserId: userId });
     }
-
-    this.publishToUser(userId, {
-      type,
-      recipientUserId: userId,
-    });
   }
 
-  private resolveUserId(request: IncomingMessage): number | null {
+  private async publish(client: Client, event: NotificationEvent): Promise<void> {
     try {
-      const rawUrl = request.url || "/";
-      const url = new URL(rawUrl, "http://localhost");
-      const token = url.searchParams.get("token");
-
-      if (!token) {
-        return null;
+      // Recheck before delivery, including revocations made by another server.
+      if (client.identity.exp * 1000 <= Date.now() || !await SessionService.isSessionActive(client.identity.sid, client.identity.userId)) {
+        client.socket.close(1008, "Session revoked"); return;
       }
-
-      const payload = JwtService.verifyAccessToken(token);
-      if (!payload?.userId) {
-        return null;
-      }
-
-      return payload.userId;
-    } catch {
-      return null;
-    }
-  }
-
-  private registerClient(userId: number, socket: RuntimeWebSocket): void {
-    const clients =
-      this.clientsByUser.get(userId) || new Set<RuntimeWebSocket>();
-    clients.add(socket);
-    this.clientsByUser.set(userId, clients);
-  }
-
-  private unregisterClient(userId: number, socket: RuntimeWebSocket): void {
-    const clients = this.clientsByUser.get(userId);
-    if (!clients) {
-      return;
-    }
-
-    clients.delete(socket);
-    if (clients.size === 0) {
-      this.clientsByUser.delete(userId);
-    }
-  }
-
-  private publishToUser(userId: number, payload: NotificationEvent): void {
-    const clients = this.clientsByUser.get(userId);
-    if (!clients || clients.size === 0) {
-      return;
-    }
-
-    const serialized = JSON.stringify(payload);
-
-    clients.forEach((socket) => {
-      if (socket.readyState === this.wsOpenState) {
-        socket.send(serialized);
-      }
-    });
-  }
-
-  private loadWsModule(): WsModule | null {
-    try {
-      return require("ws") as WsModule;
-    } catch {
-      return null;
-    }
+      if (client.socket.readyState === WebSocket.OPEN) client.socket.send(JSON.stringify(event));
+    } catch { client.socket.close(1011, "Authentication unavailable"); }
   }
 }
 

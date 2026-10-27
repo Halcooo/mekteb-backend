@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttendanceController = void 0;
 const attendanceService_1 = require("../services/attendanceService");
 const dateInput_1 = require("../utils/dateInput");
+const requestValidation_1 = require("../utils/requestValidation");
 class AttendanceController {
     static async getAllAttendance(req, res) {
         try {
@@ -34,8 +35,8 @@ class AttendanceController {
     }
     static async getAttendanceById(req, res) {
         try {
-            const id = parseInt(req.params.id);
-            if (isNaN(id)) {
+            const id = (0, requestValidation_1.parsePositiveInteger)(req.params.id);
+            if (id === null) {
                 res.status(400).json({
                     success: false,
                     error: "Invalid attendance ID",
@@ -66,11 +67,11 @@ class AttendanceController {
     }
     static async getAttendanceByStudent(req, res) {
         try {
-            const student_id = parseInt(req.params.studentId);
+            const student_id = (0, requestValidation_1.parsePositiveInteger)(req.params.studentId);
             const { startDate: rawStartDate, endDate: rawEndDate } = req.query;
             const startDate = (0, dateInput_1.normalizeDateOnlyInput)(rawStartDate);
             const endDate = (0, dateInput_1.normalizeDateOnlyInput)(rawEndDate);
-            if (isNaN(student_id)) {
+            if (student_id === null) {
                 res.status(400).json({
                     success: false,
                     error: "Invalid student ID",
@@ -176,7 +177,7 @@ class AttendanceController {
     }
     static async createAttendance(req, res) {
         try {
-            const { student_id, date, status } = req.body;
+            const { student_id, date, status } = req.body ?? {};
             const normalizedDate = (0, dateInput_1.normalizeDateOnlyInput)(date);
             // Basic validation
             if (!student_id || !normalizedDate || !status) {
@@ -187,7 +188,7 @@ class AttendanceController {
                 return;
             }
             // Validate student_id is a number
-            if (typeof student_id !== "number" || student_id <= 0) {
+            if (typeof student_id !== "number" || !Number.isSafeInteger(student_id) || student_id <= 0) {
                 res.status(400).json({
                     success: false,
                     error: "student_id must be a valid positive number",
@@ -230,9 +231,9 @@ class AttendanceController {
     }
     static async updateAttendance(req, res) {
         try {
-            const id = parseInt(req.params.id);
-            const { status } = req.body;
-            if (isNaN(id)) {
+            const id = (0, requestValidation_1.parsePositiveInteger)(req.params.id);
+            const { status } = req.body ?? {};
+            if (id === null) {
                 res.status(400).json({
                     success: false,
                     error: "Invalid attendance ID",
@@ -287,8 +288,8 @@ class AttendanceController {
     }
     static async deleteAttendance(req, res) {
         try {
-            const id = parseInt(req.params.id);
-            if (isNaN(id)) {
+            const id = (0, requestValidation_1.parsePositiveInteger)(req.params.id);
+            if (id === null) {
                 res.status(400).json({
                     success: false,
                     error: "Invalid attendance ID",
@@ -319,11 +320,11 @@ class AttendanceController {
     }
     static async getStudentAttendanceStats(req, res) {
         try {
-            const student_id = parseInt(req.params.studentId);
+            const student_id = (0, requestValidation_1.parsePositiveInteger)(req.params.studentId);
             const { startDate: rawStartDate, endDate: rawEndDate } = req.query;
             const startDate = (0, dateInput_1.normalizeDateOnlyInput)(rawStartDate);
             const endDate = (0, dateInput_1.normalizeDateOnlyInput)(rawEndDate);
-            if (isNaN(student_id)) {
+            if (student_id === null) {
                 res.status(400).json({
                     success: false,
                     error: "Invalid student ID",
@@ -364,10 +365,10 @@ class AttendanceController {
     }
     static async createBulkAttendance(req, res) {
         try {
-            const { attendanceList } = req.body;
+            const { attendanceList } = req.body ?? {};
             if (!attendanceList ||
                 !Array.isArray(attendanceList) ||
-                attendanceList.length === 0) {
+                attendanceList.length === 0 || attendanceList.length > 1000) {
                 res.status(400).json({
                     success: false,
                     error: "attendanceList must be a non-empty array",
@@ -382,7 +383,7 @@ class AttendanceController {
                 "EXCUSED",
             ];
             for (let i = 0; i < attendanceList.length; i++) {
-                const record = attendanceList[i];
+                const record = attendanceList[i] ?? {};
                 const normalizedRecordDate = (0, dateInput_1.normalizeDateOnlyInput)(record.date);
                 if (!record.student_id || !normalizedRecordDate || !record.status) {
                     res.status(400).json({
@@ -391,7 +392,7 @@ class AttendanceController {
                     });
                     return;
                 }
-                if (typeof record.student_id !== "number" || record.student_id <= 0) {
+                if (typeof record.student_id !== "number" || !Number.isSafeInteger(record.student_id) || record.student_id <= 0) {
                     res.status(400).json({
                         success: false,
                         error: `Record ${i + 1}: student_id must be a valid positive number`,

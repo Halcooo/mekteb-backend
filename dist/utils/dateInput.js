@@ -29,8 +29,8 @@ const normalizeDateOnlyInput = (value) => {
     if (!trimmed) {
         return null;
     }
-    if (isValidDateOnly(trimmed)) {
-        return trimmed;
+    if (DATE_ONLY_REGEX.test(trimmed)) {
+        return isValidDateOnly(trimmed) ? trimmed : null;
     }
     const parsed = new Date(trimmed);
     if (Number.isNaN(parsed.getTime())) {

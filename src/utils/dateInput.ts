@@ -35,8 +35,8 @@ export const normalizeDateOnlyInput = (value: unknown): string | null => {
     return null;
   }
 
-  if (isValidDateOnly(trimmed)) {
-    return trimmed;
+  if (DATE_ONLY_REGEX.test(trimmed)) {
+    return isValidDateOnly(trimmed) ? trimmed : null;
   }
 
   const parsed = new Date(trimmed);

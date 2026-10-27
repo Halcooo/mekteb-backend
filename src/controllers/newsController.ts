@@ -7,19 +7,22 @@ import {
 import {
   deleteImageFile,
   generateImageUrl,
+  hasValidImageSignature,
+  uploadDir,
 } from "../middleware/multerConfig";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import path from "path";
 import fs from "fs";
+import {isValidText,parsePositiveInteger} from '../utils/requestValidation';
 
 export class NewsController {
   static async getAllNews(req: Request, res: Response): Promise<void> {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
+      const page = req.query.page===undefined?1:parsePositiveInteger(req.query.page);
+      const limit = req.query.limit===undefined?10:parsePositiveInteger(req.query.limit);
 
       // Validate pagination parameters
-      if (page < 1 || limit < 1 || limit > 100) {
+      if (!page || !limit || limit > 100 || !Number.isSafeInteger((page-1)*limit)) {
         res.status(400).json({
           success: false,
           error:
@@ -43,9 +46,9 @@ export class NewsController {
 
   static async getNewsById(req: Request, res: Response): Promise<void> {
     try {
-      const id = parseInt(req.params.id);
+      const id = parsePositiveInteger(req.params.id);
 
-      if (isNaN(id)) {
+      if (!id) {
         res.status(400).json({
           success: false,
           error: "Invalid news ID",
@@ -83,10 +86,10 @@ export class NewsController {
     res: Response
   ): Promise<void> {
     try {
-      const { title, text, subtitle } = req.body;
+      const { title, text, subtitle } = req.body??{};
 
       // Basic validation
-      if (!title || !text) {
+      if (!isValidText(title,255) || !isValidText(text,50000) || (subtitle!==undefined && !isValidText(subtitle,255))) {
         res.status(400).json({
           success: false,
           error: "Title and text are required",
@@ -125,10 +128,10 @@ export class NewsController {
     res: Response
   ): Promise<void> {
     try {
-      const id = parseInt(req.params.id);
-      const { title, text }: UpdateNewsData = req.body;
+      const id = parsePositiveInteger(req.params.id);
+      const { title, text }: UpdateNewsData = req.body??{};
 
-      if (isNaN(id)) {
+      if (!id) {
         res.status(400).json({
           success: false,
           error: "Invalid news ID",
@@ -137,7 +140,7 @@ export class NewsController {
       }
 
       // Check if at least one field is provided
-      if (!title && !text) {
+      if ((title===undefined && text===undefined) || (title!==undefined&&!isValidText(title,255)) || (text!==undefined&&!isValidText(text,50000))) {
         res.status(400).json({
           success: false,
           error: "At least one field (title or text) must be provided",
@@ -145,7 +148,7 @@ export class NewsController {
         return;
       }
 
-      const updatedNews = await NewsService.updateNews(id, { title, text });
+      const updatedNews = await NewsService.updateNews(id, { ...(title!==undefined?{title}:{}), ...(text!==undefined?{text}:{}) });
 
       if (!updatedNews) {
         res.status(404).json({
@@ -176,9 +179,9 @@ export class NewsController {
     res: Response
   ): Promise<void> {
     try {
-      const id = parseInt(req.params.id);
+      const id = parsePositiveInteger(req.params.id);
 
-      if (isNaN(id)) {
+      if (!id) {
         res.status(400).json({
           success: false,
           error: "Invalid news ID",
@@ -213,9 +216,9 @@ export class NewsController {
 
   static async getNewsByAuthor(req: Request, res: Response): Promise<void> {
     try {
-      const created_by = parseInt(req.params.userId);
+      const created_by = parsePositiveInteger(req.params.userId);
 
-      if (isNaN(created_by)) {
+      if (!created_by) {
         res.status(400).json({
           success: false,
           error: "Invalid user ID",
@@ -242,83 +245,25 @@ export class NewsController {
   }
 
   // Image handling endpoints
-  static async uploadNewsImages(
-    req: AuthenticatedRequest,
-    res: Response
-  ): Promise<void> {
+  static async uploadNewsImages(req:AuthenticatedRequest,res:Response):Promise<void>{
+    const files=(req.files as Express.Multer.File[]|undefined)??[];
+    let committed=false;
     try {
-      const newsId = parseInt(req.params.newsId);
-
-      if (isNaN(newsId)) {
-        res.status(400).json({
-          success: false,
-          error: "Invalid news ID",
-        });
-        return;
-      }
-
-      // Check if news exists
-      const news = await NewsService.getNewsById(newsId);
-      if (!news) {
-        res.status(404).json({
-          success: false,
-          error: "News not found",
-        });
-        return;
-      }
-
-      const files = req.files as Express.Multer.File[];
-      if (!files || files.length === 0) {
-        res.status(400).json({
-          success: false,
-          error: "No images provided",
-        });
-        return;
-      }
-
-      const uploadedImages = [];
-
-      for (const file of files) {
-        const relativePath = `uploads/news-images/${file.filename}`;
-        const imageId = await NewsService.addNewsImage(
-          newsId,
-          relativePath,
-          file.originalname,
-          file.size,
-          file.mimetype
-        );
-
-        uploadedImages.push({
-          id: imageId,
-          path: relativePath,
-          url: generateImageUrl(relativePath),
-          originalName: file.originalname,
-          size: file.size,
-          mimeType: file.mimetype,
-        });
-      }
-
-      res.status(201).json({
-        success: true,
-        message: "Images uploaded successfully",
-        data: uploadedImages,
-      });
-    } catch (error) {
-      console.error("Error uploading news images:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to upload images",
-        message:
-          error instanceof Error ? error.message : "Unknown error occurred",
-      });
-    }
+      const newsId=parsePositiveInteger(req.params.newsId);
+      if(!newsId){res.status(400).json({success:false,error:'INVALID_NEWS_ID'});return;}
+      if(!files.length||files.some(file=>!hasValidImageSignature(file))){res.status(400).json({success:false,error:'INVALID_IMAGE'});return;}
+      const images=await NewsService.addNewsImages(newsId,files);
+      committed=true;res.status(201).json({success:true,data:images});
+    }catch(error){
+      const message=(error as Error).message;
+      res.status(message==='NEWS_NOT_FOUND'?404:message==='TOO_MANY_IMAGES'?400:500).json({success:false,error:message==='TOO_MANY_IMAGES'?'TOO_MANY_IMAGES':'IMAGE_UPLOAD_FAILED'});
+    }finally{if(!committed)for(const file of files)deleteImageFile(`uploads/news-images/${file.filename}`);}
   }
-
   static async getNewsImages(req: Request, res: Response): Promise<void> {
     try {
-      const newsId = parseInt(req.params.newsId);
+      const newsId = parsePositiveInteger(req.params.newsId);
 
-      if (isNaN(newsId)) {
+      if (!newsId) {
         res.status(400).json({
           success: false,
           error: "Invalid news ID",
@@ -352,9 +297,9 @@ export class NewsController {
     res: Response
   ): Promise<void> {
     try {
-      const imageId = parseInt(req.params.imageId);
+      const imageId = parsePositiveInteger(req.params.imageId);
 
-      if (isNaN(imageId)) {
+      if (!imageId) {
         res.status(400).json({
           success: false,
           error: "Invalid image ID",
@@ -403,10 +348,9 @@ export class NewsController {
   static async serveImage(req: Request, res: Response): Promise<void> {
     try {
       const fileName = req.params.fileName;
+      if(path.basename(fileName)!==fileName){res.status(400).json({success:false,error:'INVALID_IMAGE_NAME'});return;}
       const imagePath = path.join(
-        process.cwd(),
-        "uploads",
-        "news-images",
+        uploadDir,
         fileName
       );
 

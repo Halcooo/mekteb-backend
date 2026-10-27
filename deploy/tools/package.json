@@ -1,0 +1,23 @@
+{
+  "name": "mekteb-private-deploy-tools",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "audit": "node audit.cjs",
+    "rehearsal:restore": "node rehearsal.cjs --confirm-empty-rehearsal",
+    "candidate:install": "node candidate.cjs install",
+    "rehearsal:plan": "node candidate.cjs plan",
+    "rehearsal:upgrade": "node candidate.cjs upgrade",
+    "rehearsal:migrate": "node candidate.cjs migrate",
+    "rehearsal:check": "node candidate.cjs check",
+    "rehearsal:smoke": "node candidate.cjs smoke",
+    "rehearsal:verify": "node candidate.cjs verify",
+    "production:stage": "node production.cjs stage",
+    "production:compare": "node production.cjs compare",
+    "production:migrate": "node production.cjs migrate --confirm-api-stopped",
+    "production:activate": "node production.cjs activate",
+    "production:worker-check": "node production.cjs worker",
+    "security:rotation-plan": "node rotate-database.cjs plan",
+    "security:rotate-database": "node rotate-database.cjs rotate"
+  }
+}

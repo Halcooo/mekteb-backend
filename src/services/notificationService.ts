@@ -34,7 +34,15 @@ export interface CreateNotificationsInput {
   commentDate?: string;
 }
 
+const visible = ` AND (n.comment_id IS NULL OR EXISTS (SELECT 1 FROM student_comments c WHERE c.id=n.comment_id AND c.deleted_at IS NULL))
+ AND (n.student_id IS NULL OR EXISTS (SELECT 1 FROM users u WHERE u.id=n.recipient_user_id AND u.role IN ('admin','teacher'))
+ OR EXISTS (SELECT 1 FROM parent_students ps WHERE ps.student_id=n.student_id AND ps.user_id=n.recipient_user_id))`;
 export class NotificationService {
+  static async getById(id: number, userId: number): Promise<Notification | null> {
+    const [rows] = await pool.execute<RowDataPacket[]>(`SELECT n.* FROM notifications n WHERE n.id=? AND n.recipient_user_id=? ${visible}`, [id,userId]);
+    return rows[0] ? keysToCamelCase<Notification>(rows[0]) : null;
+  }
+  /** @deprecated Chat messages must create inbox entries and jobs inside ChatService's transaction. */
   static async createForUsers(input: CreateNotificationsInput): Promise<void> {
     const uniqueRecipientIds = Array.from(
       new Set(input.recipientUserIds),
@@ -95,7 +103,7 @@ export class NotificationService {
       FROM notifications n
       LEFT JOIN users au ON au.id = n.actor_user_id
       LEFT JOIN students s ON s.id = n.student_id
-      WHERE n.recipient_user_id = ?
+      WHERE n.recipient_user_id = ? ${visible}
     `;
 
     const params: Array<number> = [userId];
@@ -113,8 +121,8 @@ export class NotificationService {
   static async getUnreadCount(userId: number): Promise<number> {
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT COUNT(*) as unread_count
-       FROM notifications
-       WHERE recipient_user_id = ? AND is_read = 0`,
+       FROM notifications n
+       WHERE recipient_user_id = ? AND is_read = 0 ${visible}`,
       [userId],
     );
 
@@ -126,9 +134,9 @@ export class NotificationService {
     userId: number,
   ): Promise<boolean> {
     const [result] = await pool.execute<ResultSetHeader>(
-      `UPDATE notifications
+      `UPDATE notifications n
        SET is_read = 1, read_at = CURRENT_TIMESTAMP
-       WHERE id = ? AND recipient_user_id = ?`,
+       WHERE id = ? AND recipient_user_id = ? ${visible}`,
       [notificationId, userId],
     );
 
@@ -142,9 +150,9 @@ export class NotificationService {
 
   static async markAllAsRead(userId: number): Promise<number> {
     const [result] = await pool.execute<ResultSetHeader>(
-      `UPDATE notifications
+      `UPDATE notifications n
        SET is_read = 1, read_at = CURRENT_TIMESTAMP
-       WHERE recipient_user_id = ? AND is_read = 0`,
+       WHERE recipient_user_id = ? AND is_read = 0 ${visible}`,
       [userId],
     );
 

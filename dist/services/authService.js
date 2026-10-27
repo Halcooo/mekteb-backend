@@ -7,168 +7,49 @@ exports.AuthService = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const userService_1 = require("./userService");
 const jwtService_1 = require("./jwtService");
+const sessionService_1 = require("./sessionService");
+function authenticated(user, session, message) {
+    return {
+        success: true, user: (0, userService_1.toPublicUser)(user), sessionId: session.sessionId,
+        accessToken: jwtService_1.JwtService.generateAccessToken({
+            userId: user.id, username: user.username, email: user.email, role: user.role, sid: session.sessionId,
+        }),
+        refreshToken: session.refreshToken, expiresAt: session.expiresAt, message,
+    };
+}
 class AuthService {
-    static async hashPassword(password) {
-        try {
-            return await bcrypt_1.default.hash(password, this.SALT_ROUNDS);
-        }
-        catch (error) {
-            console.error("Error hashing password:", error);
-            throw new Error("Failed to hash password");
-        }
-    }
+    static async hashPassword(password) { return bcrypt_1.default.hash(password, 12); }
     static async comparePassword(password, hashedPassword) {
-        try {
-            return await bcrypt_1.default.compare(password, hashedPassword);
-        }
-        catch (error) {
-            console.error("Error comparing passwords:", error);
-            throw new Error("Failed to verify password");
-        }
+        return bcrypt_1.default.compare(password, hashedPassword);
     }
-    static async register(userData) {
-        try {
-            const { firstName, lastName, username, email, password } = userData;
-            const role = "parent";
-            // Check if user already exists (email or username)
-            const existingUserByEmail = await userService_1.UserService.getUserByEmail(email);
-            if (existingUserByEmail) {
-                return {
-                    success: false,
-                    message: "User with this email already exists",
-                };
-            }
-            const existingUserByUsername = await userService_1.UserService.getUserByUsername(username);
-            if (existingUserByUsername) {
-                return {
-                    success: false,
-                    message: "User with this username already exists",
-                };
-            }
-            // Hash the password
-            const hashedPassword = await AuthService.hashPassword(password);
-            // Create the user
-            const createUserData = {
-                username,
-                email,
-                password: hashedPassword,
-                role,
-                first_name: firstName,
-                last_name: lastName,
-            };
-            const newUser = await userService_1.UserService.createUser(createUserData);
-            // Remove password from response
-            const { password: _, ...userWithoutPassword } = newUser;
-            // Generate JWT tokens
-            const { accessToken, refreshToken } = jwtService_1.JwtService.generateTokenPair({
-                userId: newUser.id,
-                username: newUser.username,
-                email: newUser.email,
-                role: newUser.role,
-            });
-            return {
-                success: true,
-                user: userWithoutPassword,
-                accessToken,
-                refreshToken,
-                message: "User registered successfully",
-            };
+    static async register(data, userAgent) {
+        if (await userService_1.UserService.getUserByEmail(data.email) || await userService_1.UserService.getUserByUsername(data.username)) {
+            return { success: false, message: "User with this email or username already exists" };
         }
-        catch (error) {
-            console.error("Error in user registration:", error);
-            return {
-                success: false,
-                message: error instanceof Error ? error.message : "Registration failed",
-            };
-        }
+        const password = await this.hashPassword(data.password);
+        const user = await userService_1.UserService.createUser({
+            username: data.username, email: data.email, password, role: "parent",
+            first_name: data.firstName, last_name: data.lastName,
+        });
+        const session = await sessionService_1.SessionService.createSession(user.id, { userAgent });
+        return authenticated(user, session, "User registered successfully");
     }
-    static async login(loginData) {
-        try {
-            const { username, password } = loginData;
-            // Find user by username
-            const user = await userService_1.UserService.getUserByUsername(username);
-            if (!user) {
-                return {
-                    success: false,
-                    message: "Invalid username or password",
-                };
-            }
-            // Compare password
-            const isPasswordValid = await AuthService.comparePassword(password, user.password);
-            if (!isPasswordValid) {
-                return {
-                    success: false,
-                    message: "Invalid username or password",
-                };
-            }
-            // Remove password from response
-            const { password: _, ...userWithoutPassword } = user;
-            // Generate JWT tokens
-            const { accessToken, refreshToken } = jwtService_1.JwtService.generateTokenPair({
-                userId: user.id,
-                username: user.username,
-                email: user.email,
-                role: user.role,
-            });
-            return {
-                success: true,
-                user: userWithoutPassword,
-                accessToken,
-                refreshToken,
-                message: "Login successful",
-            };
+    static async login(data, userAgent) {
+        const user = await userService_1.UserService.getUserByUsername(data.username);
+        if (!user || !await this.comparePassword(data.password, user.password)) {
+            return { success: false, message: "Invalid username or password" };
         }
-        catch (error) {
-            console.error("Error in user login:", error);
-            return {
-                success: false,
-                message: "Login failed",
-            };
-        }
+        const session = await sessionService_1.SessionService.createSession(user.id, { userAgent });
+        return authenticated(user, session, "Login successful");
     }
-    static async refreshToken(refreshToken) {
-        try {
-            // Verify refresh token
-            const payload = jwtService_1.JwtService.verifyRefreshToken(refreshToken);
-            if (!payload) {
-                return {
-                    success: false,
-                    message: "Invalid or expired refresh token",
-                };
-            }
-            // Get user data
-            const user = await userService_1.UserService.getUserById(payload.userId);
-            if (!user) {
-                return {
-                    success: false,
-                    message: "User not found",
-                };
-            }
-            // Generate new token pair
-            const tokens = jwtService_1.JwtService.generateTokenPair({
-                userId: user.id,
-                username: user.username,
-                email: user.email,
-                role: user.role,
-            });
-            // Remove password from response
-            const { password: _, ...userWithoutPassword } = user;
-            return {
-                success: true,
-                user: userWithoutPassword,
-                accessToken: tokens.accessToken,
-                refreshToken: tokens.refreshToken,
-                message: "Token refreshed successfully",
-            };
+    static async refreshToken(raw) {
+        const session = await sessionService_1.SessionService.rotateRefreshToken(raw);
+        const user = await userService_1.UserService.getUserById(session.userId);
+        if (!user) {
+            await sessionService_1.SessionService.revokeSession(session.sessionId, session.userId);
+            throw new sessionService_1.SessionError("INVALID_REFRESH", session.sessionId, session.userId);
         }
-        catch (error) {
-            console.error("Error refreshing token:", error);
-            return {
-                success: false,
-                message: "Token refresh failed",
-            };
-        }
+        return authenticated(user, session, "Token refreshed successfully");
     }
 }
 exports.AuthService = AuthService;
-AuthService.SALT_ROUNDS = 12;

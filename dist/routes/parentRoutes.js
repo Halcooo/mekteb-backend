@@ -6,11 +6,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const parentController_1 = require("../controllers/parentController");
 const authMiddleware_1 = require("../middleware/authMiddleware");
+const rateLimiters_1 = require("../middleware/rateLimiters");
 const router = express_1.default.Router();
 // Apply authentication middleware to all routes
-router.use(authMiddleware_1.authenticateToken);
+router.use(authMiddleware_1.authenticateToken, (0, authMiddleware_1.requireRole)(["parent", "user", "admin"]));
 // POST /api/parent/connect - Connect to student using parent key
-router.post("/connect", parentController_1.ParentController.connectToStudent);
+router.post("/connect", rateLimiters_1.parentConnectionLimiter, parentController_1.ParentController.connectToStudent);
 // GET /api/parent/students - Get connected students
 router.get("/students", parentController_1.ParentController.getConnectedStudents);
 // GET /api/parent/students/:studentId/attendance - Get attendance records for connected student

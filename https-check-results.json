@@ -1,0 +1,40 @@
+{
+  "checkedAt": "2026-10-27T21:09:45.266Z",
+  "frontend": "https://mekteb-pazaric.com",
+  "api": "https://api.mekteb-pazaric.com/backend/api",
+  "results": [
+    {
+      "name": "HTTPS frontend and deep link",
+      "status": "passed"
+    },
+    {
+      "name": "Service worker JavaScript and fresh-cache policy",
+      "status": "passed"
+    },
+    {
+      "name": "Manifest and install icons",
+      "status": "passed"
+    },
+    {
+      "name": "Database health",
+      "status": "passed"
+    },
+    {
+      "name": "Credentialed CORS preflight",
+      "status": "passed"
+    },
+    {
+      "name": "CSRF rejects an untrusted origin",
+      "status": "passed"
+    },
+    {
+      "name": "Private routes reject anonymous requests",
+      "status": "passed"
+    },
+    {
+      "name": "WebSocket upgrade and authentication gate",
+      "status": "passed"
+    }
+  ],
+  "note": "Real device delivery and authenticated browser cookie/session checks are separate."
+}

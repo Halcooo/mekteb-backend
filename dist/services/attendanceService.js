@@ -148,16 +148,8 @@ class AttendanceService {
             if (!normalizedDate) {
                 throw new Error("Invalid date format");
             }
-            // Check if attendance already exists for this student on this date
-            const existingAttendance = await AttendanceService.getStudentAttendanceByDate(student_id, normalizedDate);
-            if (existingAttendance) {
-                const updatedAttendance = await AttendanceService.updateAttendance(existingAttendance.id, { status });
-                if (!updatedAttendance) {
-                    throw new Error("Failed to update existing attendance");
-                }
-                return updatedAttendance;
-            }
-            const [result] = await db_1.default.query("INSERT INTO attendance (student_id, date, status, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())", [student_id, normalizedDate, status]);
+            const [result] = await db_1.default.query(`INSERT INTO attendance (student_id,date,status,created_at,updated_at) VALUES (?,?,?,NOW(),NOW())
+         ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id),status=VALUES(status),updated_at=NOW()`, [student_id, normalizedDate, status]);
             const insertResult = result;
             const newAttendance = await AttendanceService.getAttendanceById(insertResult.insertId);
             if (!newAttendance) {
@@ -255,14 +247,14 @@ class AttendanceService {
             const [rows] = await db_1.default.query(query, params);
             const stats = rows[0];
             const attendanceRate = stats.totalDays > 0
-                ? ((stats.presentDays + stats.lateDays) / stats.totalDays) * 100
+                ? ((Number(stats.presentDays) + Number(stats.lateDays)) / Number(stats.totalDays)) * 100
                 : 0;
             return {
-                totalDays: parseInt(stats.totalDays),
-                presentDays: parseInt(stats.presentDays),
-                absentDays: parseInt(stats.absentDays),
-                lateDays: parseInt(stats.lateDays),
-                excusedDays: parseInt(stats.excusedDays),
+                totalDays: Number(stats.totalDays) || 0,
+                presentDays: Number(stats.presentDays) || 0,
+                absentDays: Number(stats.absentDays) || 0,
+                lateDays: Number(stats.lateDays) || 0,
+                excusedDays: Number(stats.excusedDays) || 0,
                 attendanceRate: Math.round(attendanceRate * 100) / 100,
             };
         }
@@ -272,29 +264,26 @@ class AttendanceService {
         }
     }
     static async createBulkAttendance(attendanceList) {
+        if (!attendanceList.length)
+            return 0;
+        const connection = await db_1.default.getConnection();
         try {
-            if (attendanceList.length === 0) {
-                return 0;
+            await connection.beginTransaction();
+            for (const row of attendanceList) {
+                const date = (0, dateInput_1.normalizeDateOnlyInput)(row.date);
+                if (!date)
+                    throw Error('Invalid date');
+                await connection.execute(`INSERT INTO attendance(student_id,date,status)VALUES(?,?,?) ON DUPLICATE KEY UPDATE status=VALUES(status),updated_at=NOW()`, [row.student_id, date, row.status]);
             }
-            let affectedRows = 0;
-            for (const attendance of attendanceList) {
-                const existing = await AttendanceService.getStudentAttendanceByDate(attendance.student_id, attendance.date);
-                if (existing) {
-                    await AttendanceService.updateAttendance(existing.id, {
-                        status: attendance.status,
-                    });
-                    affectedRows += 1;
-                }
-                else {
-                    await AttendanceService.createAttendance(attendance);
-                    affectedRows += 1;
-                }
-            }
-            return affectedRows;
+            await connection.commit();
+            return attendanceList.length;
         }
         catch (error) {
-            console.error("Error creating bulk attendance:", error);
-            throw new Error("Failed to create bulk attendance");
+            await connection.rollback();
+            throw error;
+        }
+        finally {
+            connection.release();
         }
     }
     static async getAttendanceSummaryByDate(date) {
@@ -317,13 +306,14 @@ class AttendanceService {
             const lateCount = Number(statusResult[0]?.lateCount) || 0;
             const excusedCount = Number(statusResult[0]?.excusedCount) || 0;
             const explicitAbsent = Number(statusResult[0]?.absentCount) || 0;
-            // Calculate total absent: students without records + explicitly marked absent
-            const absentCount = totalStudents - presentCount - lateCount - excusedCount;
+            const absentCount = explicitAbsent;
+            const unrecordedCount = Math.max(0, totalStudents - presentCount - lateCount - excusedCount - absentCount);
             // Get breakdown by grade
             const [rows] = await db_1.default.query(`SELECT 
           COALESCE(s.grade_level, 'Unknown') as grade_level,
           COUNT(s.id) as totalStudents,
           COALESCE(SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END), 0) as presentCount,
+          COALESCE(SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END), 0) as absentCount,
           COALESCE(SUM(CASE WHEN a.status = 'LATE' THEN 1 ELSE 0 END), 0) as lateCount,
           COALESCE(SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END), 0) as excusedCount
          FROM students s
@@ -332,13 +322,14 @@ class AttendanceService {
          ORDER BY s.grade_level`, [normalizedDate]);
             const byGrade = rows.map((row) => ({
                 ...row,
-                absentCount: Number(row.totalStudents) -
+                unrecordedCount: Number(row.totalStudents) -
                     Number(row.presentCount) -
+                    Number(row.absentCount) -
                     Number(row.lateCount) -
                     Number(row.excusedCount),
             }));
             const presentRate = totalStudents
-                ? (presentCount / totalStudents) * 100
+                ? ((presentCount + lateCount) / totalStudents) * 100
                 : 0;
             return {
                 totals: {
@@ -347,6 +338,7 @@ class AttendanceService {
                     absentCount,
                     lateCount,
                     excusedCount,
+                    unrecordedCount,
                     presentRate: Math.round(presentRate * 10) / 10,
                 },
                 byGrade,

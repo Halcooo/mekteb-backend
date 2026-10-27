@@ -1,4 +1,0 @@
----
-deployment:
-  tasks:
-    - /usr/bin/rsync -av --delete --exclude 'uploads' dist/ /storage1/mektebpa/api.mekteb-pazaric.com/

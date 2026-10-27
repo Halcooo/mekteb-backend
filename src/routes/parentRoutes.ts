@@ -1,14 +1,15 @@
 import express from "express";
 import { ParentController } from "../controllers/parentController";
-import { authenticateToken } from "../middleware/authMiddleware";
+import { authenticateToken, requireRole } from "../middleware/authMiddleware";
+import { parentConnectionLimiter } from "../middleware/rateLimiters";
 
 const router = express.Router();
 
 // Apply authentication middleware to all routes
-router.use(authenticateToken);
+router.use(authenticateToken, requireRole(["parent", "user", "admin"]));
 
 // POST /api/parent/connect - Connect to student using parent key
-router.post("/connect", ParentController.connectToStudent);
+router.post("/connect", parentConnectionLimiter, ParentController.connectToStudent);
 
 // GET /api/parent/students - Get connected students
 router.get("/students", ParentController.getConnectedStudents);

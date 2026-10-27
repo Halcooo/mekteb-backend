@@ -21,6 +21,30 @@ export interface CreateUserData {
   last_name: string;
 }
 
+// Only these fields may cross the API boundary. Authentication lookups still
+// need the password hash internally, so never serialize their raw result.
+export interface PublicUser {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  first_name: string;
+  last_name: string;
+  created_at?: Date;
+}
+
+export function toPublicUser(user: User): PublicUser {
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    first_name: user.first_name,
+    last_name: user.last_name,
+    created_at: user.created_at,
+  };
+}
+
 export class UserService {
   static async getAllUsers(): Promise<User[]> {
     try {

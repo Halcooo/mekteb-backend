@@ -1,4 +1,14 @@
 # Dependencies
+release/
+.deploy-access/
+production-backups/
+*.sql.gz
+*.pem
+*.key
+*.p12
+*.pfx
+id_mekteb_*
+mysql-client.cnf
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -8,6 +18,8 @@ yarn-error.log*
 build/
 
 # Environment variables
+.env.*
+!.env.example
 .env
 .env.local
 .env.development.local

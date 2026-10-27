@@ -1,214 +1,66 @@
 import bcrypt from "bcrypt";
-import { UserService, User, CreateUserData } from "./userService";
+import { UserService, PublicUser, User, toPublicUser } from "./userService";
 import { JwtService } from "./jwtService";
+import { SessionService, SessionCredentials, SessionError } from "./sessionService";
 
-export interface LoginData {
-  username: string;
-  password: string;
-}
-
-export interface RegisterData {
-  firstName: string;
-  lastName: string;
-  username: string;
-  email: string;
-  password: string;
-}
-
+export interface LoginData { username: string; password: string }
+export interface RegisterData extends LoginData { firstName: string; lastName: string; email: string }
 export interface AuthResult {
   success: boolean;
-  user?: Omit<User, "password">;
+  user?: PublicUser;
   accessToken?: string;
+  sessionId?: string;
+  // Internal credentials: controllers put these in an HttpOnly cookie, never JSON.
   refreshToken?: string;
+  expiresAt?: Date;
   message?: string;
 }
 
+function authenticated(user: User, session: SessionCredentials, message: string): AuthResult {
+  return {
+    success: true, user: toPublicUser(user), sessionId: session.sessionId,
+    accessToken: JwtService.generateAccessToken({
+      userId: user.id, username: user.username, email: user.email, role: user.role, sid: session.sessionId,
+    }),
+    refreshToken: session.refreshToken, expiresAt: session.expiresAt, message,
+  };
+}
+
 export class AuthService {
-  private static readonly SALT_ROUNDS = 12;
-
-  static async hashPassword(password: string): Promise<string> {
-    try {
-      return await bcrypt.hash(password, this.SALT_ROUNDS);
-    } catch (error) {
-      console.error("Error hashing password:", error);
-      throw new Error("Failed to hash password");
-    }
+  static async hashPassword(password: string): Promise<string> { return bcrypt.hash(password, 12); }
+  static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
+    return bcrypt.compare(password, hashedPassword);
   }
 
-  static async comparePassword(
-    password: string,
-    hashedPassword: string,
-  ): Promise<boolean> {
-    try {
-      return await bcrypt.compare(password, hashedPassword);
-    } catch (error) {
-      console.error("Error comparing passwords:", error);
-      throw new Error("Failed to verify password");
+  static async register(data: RegisterData, userAgent?: string): Promise<AuthResult> {
+    if (await UserService.getUserByEmail(data.email) || await UserService.getUserByUsername(data.username)) {
+      return { success: false, message: "User with this email or username already exists" };
     }
+    const password = await this.hashPassword(data.password);
+    const user = await UserService.createUser({
+      username: data.username, email: data.email, password, role: "parent",
+      first_name: data.firstName, last_name: data.lastName,
+    });
+    const session = await SessionService.createSession(user.id, { userAgent });
+    return authenticated(user, session, "User registered successfully");
   }
 
-  static async register(userData: RegisterData): Promise<AuthResult> {
-    try {
-      const { firstName, lastName, username, email, password } = userData;
-
-      const role = "parent";
-
-      // Check if user already exists (email or username)
-      const existingUserByEmail = await UserService.getUserByEmail(email);
-      if (existingUserByEmail) {
-        return {
-          success: false,
-          message: "User with this email already exists",
-        };
-      }
-
-      const existingUserByUsername =
-        await UserService.getUserByUsername(username);
-      if (existingUserByUsername) {
-        return {
-          success: false,
-          message: "User with this username already exists",
-        };
-      }
-
-      // Hash the password
-      const hashedPassword = await AuthService.hashPassword(password);
-
-      // Create the user
-      const createUserData: CreateUserData = {
-        username,
-        email,
-        password: hashedPassword,
-        role,
-        first_name: firstName,
-        last_name: lastName,
-      };
-
-      const newUser = await UserService.createUser(createUserData);
-
-      // Remove password from response
-      const { password: _, ...userWithoutPassword } = newUser;
-
-      // Generate JWT tokens
-      const { accessToken, refreshToken } = JwtService.generateTokenPair({
-        userId: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        role: newUser.role,
-      });
-
-      return {
-        success: true,
-        user: userWithoutPassword,
-        accessToken,
-        refreshToken,
-        message: "User registered successfully",
-      };
-    } catch (error) {
-      console.error("Error in user registration:", error);
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "Registration failed",
-      };
+  static async login(data: LoginData, userAgent?: string): Promise<AuthResult> {
+    const user = await UserService.getUserByUsername(data.username);
+    if (!user || !await this.comparePassword(data.password, user.password)) {
+      return { success: false, message: "Invalid username or password" };
     }
+    const session = await SessionService.createSession(user.id, { userAgent });
+    return authenticated(user, session, "Login successful");
   }
 
-  static async login(loginData: LoginData): Promise<AuthResult> {
-    try {
-      const { username, password } = loginData;
-
-      // Find user by username
-      const user = await UserService.getUserByUsername(username);
-      if (!user) {
-        return {
-          success: false,
-          message: "Invalid username or password",
-        };
-      }
-
-      // Compare password
-      const isPasswordValid = await AuthService.comparePassword(
-        password,
-        user.password,
-      );
-      if (!isPasswordValid) {
-        return {
-          success: false,
-          message: "Invalid username or password",
-        };
-      }
-
-      // Remove password from response
-      const { password: _, ...userWithoutPassword } = user;
-
-      // Generate JWT tokens
-      const { accessToken, refreshToken } = JwtService.generateTokenPair({
-        userId: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-      });
-
-      return {
-        success: true,
-        user: userWithoutPassword,
-        accessToken,
-        refreshToken,
-        message: "Login successful",
-      };
-    } catch (error) {
-      console.error("Error in user login:", error);
-      return {
-        success: false,
-        message: "Login failed",
-      };
+  static async refreshToken(raw: string): Promise<AuthResult> {
+    const session = await SessionService.rotateRefreshToken(raw);
+    const user = await UserService.getUserById(session.userId);
+    if (!user) {
+      await SessionService.revokeSession(session.sessionId, session.userId);
+      throw new SessionError("INVALID_REFRESH", session.sessionId, session.userId);
     }
-  }
-
-  static async refreshToken(refreshToken: string): Promise<AuthResult> {
-    try {
-      // Verify refresh token
-      const payload = JwtService.verifyRefreshToken(refreshToken);
-      if (!payload) {
-        return {
-          success: false,
-          message: "Invalid or expired refresh token",
-        };
-      }
-
-      // Get user data
-      const user = await UserService.getUserById(payload.userId);
-      if (!user) {
-        return {
-          success: false,
-          message: "User not found",
-        };
-      }
-
-      // Generate new token pair
-      const tokens = JwtService.generateTokenPair({
-        userId: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-      });
-
-      // Remove password from response
-      const { password: _, ...userWithoutPassword } = user;
-
-      return {
-        success: true,
-        user: userWithoutPassword,
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-        message: "Token refreshed successfully",
-      };
-    } catch (error) {
-      console.error("Error refreshing token:", error);
-      return {
-        success: false,
-        message: "Token refresh failed",
-      };
-    }
+    return authenticated(user, session, "Token refreshed successfully");
   }
 }

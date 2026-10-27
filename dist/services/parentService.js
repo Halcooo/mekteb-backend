@@ -6,6 +6,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ParentService = void 0;
 const db_1 = __importDefault(require("../db"));
 const studentService_1 = require("./studentService");
+function toParentVisibleStudent(student) {
+    return {
+        id: student.id,
+        parentId: student.parentId,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        dateOfBirth: student.dateOfBirth,
+        gradeLevel: student.gradeLevel,
+        createdAt: student.createdAt,
+    };
+}
 class ParentService {
     static async isStudentConnectedToParent(userId, studentId) {
         const [rows] = await db_1.default.execute("SELECT 1 FROM parent_students WHERE user_id = ? AND student_id = ? LIMIT 1", [userId, studentId]);
@@ -45,7 +56,7 @@ class ParentService {
             return {
                 success: true,
                 message: "Successfully connected to student!",
-                student: studentData,
+                student: studentData ? toParentVisibleStudent(studentData) : undefined,
             };
         }
         catch (error) {
@@ -63,7 +74,6 @@ class ParentService {
                 s.last_name as lastName,
                 s.date_of_birth as dateOfBirth,
                 s.grade_level as gradeLevel,
-                s.parent_key as parentKey,
                 s.created_at as createdAt,
                 ps.connected_at as connectedAt,
                 COUNT(CASE WHEN UPPER(TRIM(a.status)) IN ('PRESENT', 'LATE') THEN 1 END) as present_days,
@@ -86,10 +96,11 @@ class ParentService {
            ) latest ON latest.max_id = x.id
          ) a ON s.id = a.student_id
          WHERE ps.user_id = ?
-         GROUP BY s.id, s.parent_id, s.first_name, s.last_name, s.date_of_birth, s.grade_level, s.parent_key, s.created_at, ps.connected_at
+         GROUP BY s.id, s.parent_id, s.first_name, s.last_name, s.date_of_birth, s.grade_level, s.created_at, ps.connected_at
          ORDER BY s.last_name, s.first_name`, [userId]);
             return students.map((student) => ({
-                ...student,
+                ...toParentVisibleStudent(student),
+                connectedAt: student.connectedAt,
                 lastAttendanceDate: student.last_attendance_date,
                 attendanceRate: Math.round((Number(student.attendance_rate) || 0) * 10) / 10,
             }));

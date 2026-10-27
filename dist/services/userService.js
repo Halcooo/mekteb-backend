@@ -4,7 +4,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserService = void 0;
+exports.toPublicUser = toPublicUser;
 const db_1 = __importDefault(require("../db"));
+function toPublicUser(user) {
+    return {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        created_at: user.created_at,
+    };
+}
 class UserService {
     static async getAllUsers() {
         try {

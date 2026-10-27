@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
-import { UserService } from "../services/userService";
+import { UserService, toPublicUser } from "../services/userService";
+import { isValidText, parsePositiveInteger } from "../utils/requestValidation";
 
 declare global {
   namespace Express {
@@ -9,6 +10,7 @@ declare global {
         username: string;
         email: string;
         role: string;
+        sessionId?: string;
       };
     }
   }
@@ -18,7 +20,7 @@ export class UserController {
   static async getAllUsers(req: Request, res: Response): Promise<void> {
     try {
       const users = await UserService.getAllUsers();
-      res.json(users);
+      res.json(users.map(toPublicUser));
     } catch (error) {
       console.error("Error in getAllUsers controller:", error);
       res.status(500).json({
@@ -42,7 +44,7 @@ export class UserController {
         return;
       }
 
-      res.json(user);
+      res.json(toPublicUser(user));
     } catch (error) {
       console.error("Error in getCurrentUser controller:", error);
       res.status(500).json({
@@ -55,12 +57,27 @@ export class UserController {
 
   static async updateUser(req: Request, res: Response): Promise<void> {
     try {
-      const userId = parseInt(req.params.id);
-      const { firstName, lastName } = req.body;
+      const userId = parsePositiveInteger(req.params.id);
+      if (userId === null) {
+        res.status(400).json({ error: "Invalid user ID" });
+        return;
+      }
 
-      if (!firstName || !lastName) {
+      if (!req.user) {
+        res.status(401).json({ error: "User not authenticated" });
+        return;
+      }
+
+      if (req.user.userId !== userId && req.user.role !== "admin") {
+        res.status(403).json({ error: "You may only update your own profile" });
+        return;
+      }
+
+      const { firstName, lastName } = req.body ?? {};
+
+      if (!isValidText(firstName) || !isValidText(lastName)) {
         res.status(400).json({
-          error: "First name and last name are required",
+          error: "First name and last name must contain 1 to 100 characters",
         });
         return;
       }
@@ -75,7 +92,7 @@ export class UserController {
         return;
       }
 
-      res.json({ message: "User updated successfully", user });
+      res.json({ message: "User updated successfully", user: toPublicUser(user) });
     } catch (error) {
       console.error("Error in updateUser controller:", error);
       res.status(500).json({

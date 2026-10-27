@@ -2,13 +2,34 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationController = void 0;
 const notificationService_1 = require("../services/notificationService");
+const requestValidation_1 = require("../utils/requestValidation");
 class NotificationController {
+    static async getById(req, res) {
+        const id = (0, requestValidation_1.parsePositiveInteger)(req.params.id);
+        if (!id) {
+            res.status(400).json({ success: false, error: 'INVALID_NOTIFICATION_ID' });
+            return;
+        }
+        try {
+            const item = await notificationService_1.NotificationService.getById(id, req.user.userId);
+            if (!item) {
+                res.status(404).json({ success: false, error: 'NOTIFICATION_NOT_FOUND' });
+                return;
+            }
+            res.json({ success: true, data: item });
+        }
+        catch {
+            res.status(503).json({ success: false, error: 'NOTIFICATIONS_UNAVAILABLE' });
+        }
+    }
     static async getNotifications(req, res) {
         try {
             const userId = req.user?.userId;
-            const limit = req.query.limit
-                ? parseInt(req.query.limit, 10)
-                : 30;
+            const limit = req.query.limit === undefined ? 30 : (0, requestValidation_1.parsePositiveInteger)(req.query.limit);
+            if (!limit || limit > 100 || (req.query.unreadOnly !== undefined && !['true', 'false'].includes(String(req.query.unreadOnly)))) {
+                res.status(400).json({ success: false, error: 'INVALID_QUERY' });
+                return;
+            }
             const unreadOnly = req.query.unreadOnly === "true";
             if (!userId) {
                 res.status(401).json({
@@ -55,7 +76,7 @@ class NotificationController {
     static async markAsRead(req, res) {
         try {
             const userId = req.user?.userId;
-            const notificationId = parseInt(req.params.id, 10);
+            const notificationId = (0, requestValidation_1.parsePositiveInteger)(req.params.id);
             if (!userId) {
                 res.status(401).json({
                     success: false,
@@ -63,7 +84,7 @@ class NotificationController {
                 });
                 return;
             }
-            if (Number.isNaN(notificationId)) {
+            if (!notificationId) {
                 res.status(400).json({
                     success: false,
                     error: "Invalid notification ID",

@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import { ParentService } from "../services/parentService";
+import { validateParentKeyFormat } from "../utils/parentKeyGenerator";
+import { parsePositiveInteger } from "../utils/requestValidation";
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -14,7 +16,8 @@ export class ParentController {
   // Connect to student using parent key
   static async connectToStudent(req: AuthenticatedRequest, res: Response) {
     try {
-      const { parentKey } = req.body;
+      const rawParentKey = req.body?.parentKey;
+      const parentKey = typeof rawParentKey === "string" ? rawParentKey.trim().toUpperCase() : "";
       const userId = req.user?.userId;
 
       if (!userId) {
@@ -24,10 +27,10 @@ export class ParentController {
         });
       }
 
-      if (!parentKey) {
+      if (!validateParentKeyFormat(parentKey)) {
         return res.status(400).json({
           success: false,
-          message: "Parent key is required",
+          message: "A valid parent key is required",
         });
       }
 
@@ -77,7 +80,7 @@ export class ParentController {
   // Disconnect from student
   static async disconnectFromStudent(req: AuthenticatedRequest, res: Response) {
     try {
-      const { studentId } = req.params;
+      const studentId = parsePositiveInteger(req.params.studentId);
       const userId = req.user?.userId;
 
       if (!userId) {
@@ -87,16 +90,16 @@ export class ParentController {
         });
       }
 
-      if (!studentId) {
+      if (studentId === null) {
         return res.status(400).json({
           success: false,
-          message: "Student ID is required",
+          message: "Invalid student ID",
         });
       }
 
       const result = await ParentService.disconnectFromStudent(
         userId,
-        parseInt(studentId),
+        studentId,
       );
 
       res.json(result);
@@ -113,8 +116,8 @@ export class ParentController {
   static async getStudentAttendance(req: AuthenticatedRequest, res: Response) {
     try {
       const userId = req.user?.userId;
-      const studentId = parseInt(req.params.studentId);
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const studentId = parsePositiveInteger(req.params.studentId);
+      const limit = req.query.limit === undefined ? 10 : parsePositiveInteger(req.query.limit);
 
       if (!userId) {
         return res.status(401).json({
@@ -123,11 +126,15 @@ export class ParentController {
         });
       }
 
-      if (isNaN(studentId)) {
+      if (studentId === null) {
         return res.status(400).json({
           success: false,
           message: "Invalid student ID",
         });
+      }
+
+      if (limit === null || limit > 200) {
+        return res.status(400).json({ success: false, message: "Limit must be between 1 and 200" });
       }
 
       const records = await ParentService.getStudentAttendanceForParent(
@@ -167,7 +174,7 @@ export class ParentController {
   ) {
     try {
       const userId = req.user?.userId;
-      const studentId = parseInt(req.params.studentId);
+      const studentId = parsePositiveInteger(req.params.studentId);
 
       if (!userId) {
         return res.status(401).json({
@@ -176,7 +183,7 @@ export class ParentController {
         });
       }
 
-      if (isNaN(studentId)) {
+      if (studentId === null) {
         return res.status(400).json({
           success: false,
           message: "Invalid student ID",

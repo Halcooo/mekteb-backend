@@ -47,6 +47,7 @@ class StudentService {
             dateOfBirth: dbStudent.date_of_birth,
             gradeLevel: dbStudent.grade_level,
             parentKey: dbStudent.parent_key,
+            parentName: dbStudent.parent_name ?? undefined,
             createdAt: dbStudent.created_at,
         };
     }
@@ -96,7 +97,7 @@ class StudentService {
             const totalPages = Math.ceil(totalCount / limit);
             // Get paginated results
             const selectQuery = `SELECT s.*, 
-         p.username as parent_name,
+         (SELECT GROUP_CONCAT(CONCAT(pu.first_name, ' ', pu.last_name) SEPARATOR ', ') FROM parent_students ps JOIN users pu ON pu.id=ps.user_id WHERE ps.student_id=s.id) as parent_name,
          p.username as parent_username
          FROM students s 
          LEFT JOIN users p ON s.parent_id = p.id 
@@ -119,7 +120,7 @@ class StudentService {
     static async getStudentById(id) {
         try {
             const [rows] = await db_1.default.query(`SELECT s.*, 
-         p.username as parent_name,
+         (SELECT GROUP_CONCAT(CONCAT(pu.first_name, ' ', pu.last_name) SEPARATOR ', ') FROM parent_students ps JOIN users pu ON pu.id=ps.user_id WHERE ps.student_id=s.id) as parent_name,
          p.username as parent_username
          FROM students s 
          LEFT JOIN users p ON s.parent_id = p.id 
@@ -134,7 +135,7 @@ class StudentService {
     static async getStudentsByParent(parent_id) {
         try {
             const [rows] = await db_1.default.query(`SELECT s.*, 
-         p.username as parent_name,
+         (SELECT GROUP_CONCAT(CONCAT(pu.first_name, ' ', pu.last_name) SEPARATOR ', ') FROM parent_students ps JOIN users pu ON pu.id=ps.user_id WHERE ps.student_id=s.id) as parent_name,
          p.username as parent_username
          FROM students s 
          LEFT JOIN users p ON s.parent_id = p.id 
@@ -150,7 +151,7 @@ class StudentService {
     static async getStudentsByGrade(grade_level) {
         try {
             const [rows] = await db_1.default.query(`SELECT s.*, 
-         p.username as parent_name,
+         (SELECT GROUP_CONCAT(CONCAT(pu.first_name, ' ', pu.last_name) SEPARATOR ', ') FROM parent_students ps JOIN users pu ON pu.id=ps.user_id WHERE ps.student_id=s.id) as parent_name,
          p.username as parent_username
          FROM students s 
          LEFT JOIN users p ON s.parent_id = p.id 
@@ -255,7 +256,7 @@ class StudentService {
         try {
             const searchPattern = `%${searchTerm}%`;
             const [rows] = await db_1.default.query(`SELECT s.*, 
-         p.username as parent_name,
+         (SELECT GROUP_CONCAT(CONCAT(pu.first_name, ' ', pu.last_name) SEPARATOR ', ') FROM parent_students ps JOIN users pu ON pu.id=ps.user_id WHERE ps.student_id=s.id) as parent_name,
          p.username as parent_username
          FROM students s 
          LEFT JOIN users p ON s.parent_id = p.id 

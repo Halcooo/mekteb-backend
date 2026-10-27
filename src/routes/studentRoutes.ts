@@ -8,7 +8,7 @@ import {
 const router = Router();
 
 // Apply authentication to all student routes
-router.use(authenticateToken);
+router.use(authenticateToken, requireRole(["admin", "teacher"]));
 
 // GET /api/students - Get all students
 router.get("/", StudentController.getAllStudents);

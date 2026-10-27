@@ -1,11 +1,12 @@
 "use strict";
-/**
- * Utility functions for generating and validating parent keys
- */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateParentKey = generateParentKey;
 exports.validateParentKeyFormat = validateParentKeyFormat;
 exports.generateUniqueParentKey = generateUniqueParentKey;
+const node_crypto_1 = require("node:crypto");
+/**
+ * Utility functions for generating and validating parent keys
+ */
 /**
  * Generates a unique parent key in format YYYY-MMDD-XXXX
  * Where:
@@ -23,7 +24,7 @@ function generateParentKey() {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let randomPart = "";
     for (let i = 0; i < 4; i++) {
-        randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
+        randomPart += chars.charAt((0, node_crypto_1.randomInt)(chars.length));
     }
     return `${year}-${month}${day}-${randomPart}`;
 }

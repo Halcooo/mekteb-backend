@@ -8,7 +8,15 @@ const db_1 = __importDefault(require("../db"));
 const caseConverter_1 = require("../utils/caseConverter");
 const notificationHub_1 = require("./notificationHub");
 const dateInput_1 = require("../utils/dateInput");
+const visible = ` AND (n.comment_id IS NULL OR EXISTS (SELECT 1 FROM student_comments c WHERE c.id=n.comment_id AND c.deleted_at IS NULL))
+ AND (n.student_id IS NULL OR EXISTS (SELECT 1 FROM users u WHERE u.id=n.recipient_user_id AND u.role IN ('admin','teacher'))
+ OR EXISTS (SELECT 1 FROM parent_students ps WHERE ps.student_id=n.student_id AND ps.user_id=n.recipient_user_id))`;
 class NotificationService {
+    static async getById(id, userId) {
+        const [rows] = await db_1.default.execute(`SELECT n.* FROM notifications n WHERE n.id=? AND n.recipient_user_id=? ${visible}`, [id, userId]);
+        return rows[0] ? (0, caseConverter_1.keysToCamelCase)(rows[0]) : null;
+    }
+    /** @deprecated Chat messages must create inbox entries and jobs inside ChatService's transaction. */
     static async createForUsers(input) {
         const uniqueRecipientIds = Array.from(new Set(input.recipientUserIds)).filter((id) => Number.isInteger(id) && id > 0);
         if (uniqueRecipientIds.length === 0) {
@@ -56,7 +64,7 @@ class NotificationService {
       FROM notifications n
       LEFT JOIN users au ON au.id = n.actor_user_id
       LEFT JOIN students s ON s.id = n.student_id
-      WHERE n.recipient_user_id = ?
+      WHERE n.recipient_user_id = ? ${visible}
     `;
         const params = [userId];
         if (unreadOnly) {
@@ -68,14 +76,14 @@ class NotificationService {
     }
     static async getUnreadCount(userId) {
         const [rows] = await db_1.default.execute(`SELECT COUNT(*) as unread_count
-       FROM notifications
-       WHERE recipient_user_id = ? AND is_read = 0`, [userId]);
+       FROM notifications n
+       WHERE recipient_user_id = ? AND is_read = 0 ${visible}`, [userId]);
         return Number(rows[0]?.unread_count || 0);
     }
     static async markAsRead(notificationId, userId) {
-        const [result] = await db_1.default.execute(`UPDATE notifications
+        const [result] = await db_1.default.execute(`UPDATE notifications n
        SET is_read = 1, read_at = CURRENT_TIMESTAMP
-       WHERE id = ? AND recipient_user_id = ?`, [notificationId, userId]);
+       WHERE id = ? AND recipient_user_id = ? ${visible}`, [notificationId, userId]);
         const updated = result.affectedRows > 0;
         if (updated) {
             notificationHub_1.NotificationHub.notifyUser(userId, "notification:update");
@@ -83,9 +91,9 @@ class NotificationService {
         return updated;
     }
     static async markAllAsRead(userId) {
-        const [result] = await db_1.default.execute(`UPDATE notifications
+        const [result] = await db_1.default.execute(`UPDATE notifications n
        SET is_read = 1, read_at = CURRENT_TIMESTAMP
-       WHERE recipient_user_id = ? AND is_read = 0`, [userId]);
+       WHERE recipient_user_id = ? AND is_read = 0 ${visible}`, [userId]);
         if (result.affectedRows > 0) {
             notificationHub_1.NotificationHub.notifyUser(userId, "notification:update");
         }

@@ -1,94 +1,46 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import path from "path";
-import fs from "fs";
+import "./config/environment";
 import { createServer } from "http";
-
-// Load environment variables
-const envName = process.env.NODE_ENV ?? "development";
-const envPath = path.resolve(process.cwd(), `.env.${envName}`);
-if (fs.existsSync(envPath)) {
-  dotenv.config({ path: envPath });
-} else {
-  dotenv.config();
-}
-
-// Import your routes (remove .js extensions)
-import healthRoutes from "./routes/healthRoutes";
-import newsRoutes from "./routes/newsRoutes";
-import studentRoutes from "./routes/studentRoutes";
-import userRoutes from "./routes/userRoutes";
-import authRoutes from "./routes/authRoutes";
-import attendanceRoutes from "./routes/attendanceRoutes";
-import imageRoutes from "./routes/imageRoutes";
-import commentRoutes from "./routes/commentRoutes";
-import parentRoutes from "./routes/parentRoutes";
-import notificationRoutes from "./routes/notificationRoutes";
+import { createApp } from "./app";
 import { NotificationHub } from "./services/notificationHub";
+import pool from "./db";
+import { startPushWorker } from './services/pushService';
+import {assertProductionEnvironment} from './config/deployment';
 
-const app = express();
-const API_PREFIX = "/backend/api";
+if(process.env.NODE_ENV==='production')assertProductionEnvironment();
 
-// CORS configuration
-const corsOptions = { origin: "*" }; // allow all origins for now
-app.use(cors(corsOptions));
-
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(
-  `${API_PREFIX}/uploads/news-images`,
-  express.static(path.join(process.cwd(), "uploads/news-images")),
-);
-
-// API Routes
-app.use(`${API_PREFIX}/health`, healthRoutes);
-app.use(`${API_PREFIX}/news`, newsRoutes);
-app.use(`${API_PREFIX}/students`, studentRoutes);
-app.use(`${API_PREFIX}/users`, userRoutes);
-app.use(`${API_PREFIX}/auth`, authRoutes);
-app.use(`${API_PREFIX}/attendance`, attendanceRoutes);
-app.use(`${API_PREFIX}/images`, imageRoutes);
-app.use(`${API_PREFIX}/comments`, commentRoutes);
-app.use(`${API_PREFIX}/parent`, parentRoutes);
-app.use(`${API_PREFIX}/notifications`, notificationRoutes);
-
-// Root endpoint
-app.get("/", (req, res) => {
-  res.json({
-    message: "Server is running!",
-    version: "1.0.0",
-    endpoints: {
-      health: "/api/health",
-      users: "/api/users",
-      auth: "/api/auth",
-      news: "/api/news",
-      students: "/api/students",
-      attendance: "/api/attendance",
-      images: "/api/images",
-      comments: "/api/comments",
-      parent: "/api/parent",
-    },
-  });
-});
-
-// Use cPanel-provided port
-const PORT = process.env.PORT || 5000; // fallback for local dev
-const server = createServer(app);
-try {
-  NotificationHub.init(server);
-} catch (error) {
-  console.error(
-    "[Startup] Notification hub initialization failed. Continuing without live websocket notifications.",
-    error,
-  );
-}
-
+const server = createServer(createApp());
+const PORT = process.env.PORT || 5000;
+NotificationHub.init(server);
+const stopPushWorker = startPushWorker();
 server.listen(PORT, () => {
   console.log(`[Startup] Backend listening on port ${PORT}`);
 });
-
 server.on("error", (error) => {
   console.error("[Startup] Server failed to start:", error);
+  process.exitCode = 1;
 });
+
+let shuttingDown = false;
+function shutdown(): void {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  NotificationHub.close();
+  const deadline = setTimeout(() => {
+    console.error("[Shutdown] Timed out waiting for active requests");
+    process.exit(1);
+  }, 10_000);
+  deadline.unref();
+  server.close((error) => {
+    if (error) {
+      console.error("[Shutdown] HTTP server failed to close:", error);
+      process.exitCode = 1;
+    }
+    void stopPushWorker().then(() => pool.end()).catch((databaseError: unknown) => {
+      console.error("[Shutdown] Database pool failed to close:", databaseError);
+      process.exitCode = 1;
+    }).finally(() => clearTimeout(deadline));
+  });
+}
+
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);

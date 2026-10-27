@@ -1,5 +1,5 @@
 import pool from "../db";
-import { keysToCamelCase, keysToSnakeCase } from "../utils/caseConverter";
+import { keysToCamelCase } from "../utils/caseConverter";
 import { normalizeDateOnlyInput } from "../utils/dateInput";
 
 export interface StudentComment {
@@ -12,6 +12,9 @@ export interface StudentComment {
   parentCommentId?: number;
   createdAt: string;
   updatedAt?: string;
+  clientMessageId?: string;
+  deletedAt?: string | null;
+  editedAt?: string | null;
   // Additional fields from joins
   authorName?: string;
   studentName?: string;
@@ -26,13 +29,55 @@ export interface CreateCommentData {
   content: string;
   date: string;
   parentCommentId?: number;
+  clientMessageId?: string;
 }
 
 export interface UpdateCommentData {
   content: string;
 }
 
+export interface CommentAccess {
+  id: number;
+  studentId: number;
+  authorId: number;
+  date: string;
+}
+
+// Never expose the original request fingerprint (including after soft deletion).
+export function toStudentComment(row: unknown): StudentComment {
+  const value=keysToCamelCase<StudentComment>(row);
+  const timestamp=(input:unknown)=>input instanceof Date?input.toISOString():String(input);
+  return {
+    id:value.id,studentId:value.studentId,authorId:value.authorId,authorRole:value.authorRole,
+    content:value.content,date:value.date,parentCommentId:value.parentCommentId,
+    createdAt:timestamp(value.createdAt),updatedAt:value.updatedAt?timestamp(value.updatedAt):undefined,
+    authorName:value.authorName,studentName:value.studentName,studentGrade:value.studentGrade,
+    repliesCount:value.repliesCount,clientMessageId:value.clientMessageId,
+    deletedAt:value.deletedAt?timestamp(value.deletedAt):null,editedAt:value.editedAt?timestamp(value.editedAt):null,
+  };
+}
+
+export class CommentServiceError extends Error {
+  constructor(message: string, public readonly status: 400 | 401 | 403 | 404 | 409) {
+    super(message);
+  }
+}
+
 export class CommentService {
+  // Resolve ownership without reading another student's message content.
+  static async getCommentAccessById(id: number): Promise<CommentAccess> {
+    const [rows] = await pool.execute(
+      `SELECT id, student_id, author_id, DATE_FORMAT(date, '%Y-%m-%d') AS date
+       FROM student_comments WHERE id = ?`,
+      [id],
+    );
+    const row = (rows as any[])[0];
+    if (!row) {
+      throw new CommentServiceError("Comment not found", 404);
+    }
+    return keysToCamelCase<CommentAccess>(row);
+  }
+
   // Get comments for a student on a specific date
   static async getStudentComments(
     studentId: number,
@@ -42,7 +87,7 @@ export class CommentService {
     try {
       let query = `
         SELECT 
-          c.*,
+          c.*, DATE_FORMAT(c.date, '%Y-%m-%d') AS date,
           CONCAT(u.first_name, ' ', u.last_name) as author_name,
           s.first_name,
           s.last_name,
@@ -74,7 +119,7 @@ export class CommentService {
 
       const [rows] = await pool.execute(query, params);
 
-      return (rows as any[]).map((row) => keysToCamelCase<StudentComment>(row));
+      return (rows as any[]).map((row) => toStudentComment(row));
     } catch (error) {
       console.error("Error fetching student comments:", error);
       throw new Error("Failed to fetch student comments");
@@ -91,7 +136,7 @@ export class CommentService {
 
       const query = `
         SELECT 
-          c.*,
+          c.*, DATE_FORMAT(c.date, '%Y-%m-%d') AS date,
           CONCAT(u.first_name, ' ', u.last_name) as author_name,
           s.first_name,
           s.last_name,
@@ -108,7 +153,7 @@ export class CommentService {
 
       const [rows] = await pool.execute(query, [normalizedDate]);
 
-      return (rows as any[]).map((row) => keysToCamelCase<StudentComment>(row));
+      return (rows as any[]).map((row) => toStudentComment(row));
     } catch (error) {
       console.error("Error fetching daily comments:", error);
       throw new Error("Failed to fetch daily comments");
@@ -183,7 +228,7 @@ export class CommentService {
       const offset = (page - 1) * limit;
       const query = `
         SELECT 
-          c.*,
+          c.*, DATE_FORMAT(c.date, '%Y-%m-%d') AS date,
           CONCAT(u.first_name, ' ', u.last_name) as author_name,
           s.first_name,
           s.last_name,
@@ -202,7 +247,7 @@ export class CommentService {
       const [rows] = await pool.execute(query, [...params, limit, offset]);
 
       const comments = (rows as any[]).map((row) =>
-        keysToCamelCase<StudentComment>(row),
+        toStudentComment(row),
       );
 
       return { comments, total };
@@ -212,47 +257,17 @@ export class CommentService {
     }
   }
 
-  // Create a new comment
-  static async createComment(
-    commentData: CreateCommentData,
-  ): Promise<StudentComment> {
-    try {
-      const normalizedDate = normalizeDateOnlyInput(commentData.date);
-      if (!normalizedDate) {
-        throw new Error("Invalid date format");
-      }
-
-      const dbData = keysToSnakeCase(commentData) as any;
-
-      const query = `
-        INSERT INTO student_comments 
-        (student_id, author_id, author_role, content, date, parent_comment_id)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `;
-
-      const [result] = await pool.execute(query, [
-        commentData.studentId,
-        commentData.authorId,
-        commentData.authorRole,
-        commentData.content,
-        normalizedDate,
-        commentData.parentCommentId || null,
-      ]);
-
-      const insertId = (result as any).insertId;
-      return await this.getCommentById(insertId);
-    } catch (error) {
-      console.error("Error creating comment:", error);
-      throw new Error("Failed to create comment");
-    }
+  // Messages, recipient inbox entries and push jobs commit together.
+  static async createComment(commentData: CreateCommentData): Promise<StudentComment> {
+    const { ChatService } = await import('./chatService');
+    return ChatService.send(commentData);
   }
-
   // Get comment by ID
   static async getCommentById(id: number): Promise<StudentComment> {
     try {
       const query = `
         SELECT 
-          c.*,
+          c.*, DATE_FORMAT(c.date, '%Y-%m-%d') AS date,
           CONCAT(u.first_name, ' ', u.last_name) as author_name,
           s.first_name,
           s.last_name,
@@ -269,11 +284,12 @@ export class CommentService {
       const [rows] = await pool.execute(query, [id]);
 
       if ((rows as any[]).length === 0) {
-        throw new Error("Comment not found");
+        throw new CommentServiceError("Comment not found", 404);
       }
 
-      return keysToCamelCase<StudentComment>((rows as any[])[0]);
+      return toStudentComment((rows as any[])[0]);
     } catch (error) {
+      if (error instanceof CommentServiceError) throw error;
       console.error("Error fetching comment by ID:", error);
       throw new Error("Failed to fetch comment");
     }
@@ -284,49 +300,53 @@ export class CommentService {
     id: number,
     updateData: UpdateCommentData,
     authorId: number,
+    isAdmin = false,
   ): Promise<StudentComment> {
     try {
       // First check if the comment exists and belongs to the author
-      const existingComment = await this.getCommentById(id);
+      const existingComment = await this.getCommentAccessById(id);
 
-      if (existingComment.authorId !== authorId) {
-        throw new Error("Unauthorized to update this comment");
+      if (existingComment.authorId !== authorId && !isAdmin) {
+        throw new CommentServiceError("Unauthorized to update this comment", 403);
       }
 
       const query = `
         UPDATE student_comments 
-        SET content = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ? AND author_id = ?
+        SET content = ?, edited_at = CURRENT_TIMESTAMP(3), updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND deleted_at IS NULL AND (author_id = ? OR ? = 1)
       `;
 
-      await pool.execute(query, [updateData.content, id, authorId]);
+      const [result] = await pool.execute(query, [updateData.content, id, authorId, isAdmin]);
+      if ((result as {affectedRows:number}).affectedRows === 0) throw new CommentServiceError('Comment not found',404);
 
       return await this.getCommentById(id);
     } catch (error) {
+      if (error instanceof CommentServiceError) throw error;
       console.error("Error updating comment:", error);
       throw new Error("Failed to update comment");
     }
   }
 
   // Delete a comment
-  static async deleteComment(id: number, authorId: number): Promise<void> {
+  static async deleteComment(id: number, authorId: number, isAdmin = false): Promise<void> {
     try {
       // First check if the comment exists and belongs to the author
-      const existingComment = await this.getCommentById(id);
+      const existingComment = await this.getCommentAccessById(id);
 
-      if (existingComment.authorId !== authorId) {
-        throw new Error("Unauthorized to delete this comment");
+      if (existingComment.authorId !== authorId && !isAdmin) {
+        throw new CommentServiceError("Unauthorized to delete this comment", 403);
       }
 
       const query =
-        "DELETE FROM student_comments WHERE id = ? AND author_id = ?";
+        "UPDATE student_comments SET content = '[deleted]', deleted_at = CURRENT_TIMESTAMP(3), updated_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL AND (author_id = ? OR ? = 1)";
 
-      const [result] = await pool.execute(query, [id, authorId]);
+      const [result] = await pool.execute(query, [id, authorId, isAdmin]);
 
       if ((result as any).affectedRows === 0) {
-        throw new Error("Comment not found or not authorized");
+        throw new CommentServiceError("Comment not found", 404);
       }
     } catch (error) {
+      if (error instanceof CommentServiceError) throw error;
       console.error("Error deleting comment:", error);
       throw new Error("Failed to delete comment");
     }
@@ -335,11 +355,12 @@ export class CommentService {
   // Get comment thread (parent comment + all replies)
   static async getCommentThread(
     parentCommentId: number,
+    studentId: number,
   ): Promise<StudentComment[]> {
     try {
       const query = `
         SELECT 
-          c.*,
+          c.*, DATE_FORMAT(c.date, '%Y-%m-%d') AS date,
           CONCAT(u.first_name, ' ', u.last_name) as author_name,
           s.first_name,
           s.last_name,
@@ -350,16 +371,17 @@ export class CommentService {
         FROM student_comments c
         JOIN users u ON c.author_id = u.id
         JOIN students s ON c.student_id = s.id
-        WHERE c.id = ? OR c.parent_comment_id = ?
+        WHERE c.student_id = ? AND (c.id = ? OR c.parent_comment_id = ?)
         ORDER BY c.parent_comment_id IS NULL DESC, c.created_at ASC
       `;
 
       const [rows] = await pool.execute(query, [
+        studentId,
         parentCommentId,
         parentCommentId,
       ]);
 
-      return (rows as any[]).map((row) => keysToCamelCase<StudentComment>(row));
+      return (rows as any[]).map((row) => toStudentComment(row));
     } catch (error) {
       console.error("Error fetching comment thread:", error);
       throw new Error("Failed to fetch comment thread");

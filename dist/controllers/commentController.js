@@ -3,23 +3,100 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CommentController = void 0;
 const commentService_1 = require("../services/commentService");
 const parentService_1 = require("../services/parentService");
-const notificationService_1 = require("../services/notificationService");
 const dateInput_1 = require("../utils/dateInput");
+const STAFF_ROLES = ["admin", "teacher"];
+const PARENT_ROLES = ["parent", "user"];
+const COMMENT_ROLES = ["admin", "teacher", "parent"];
+function requireCommentUser(req) {
+    if (!req.user)
+        throw new commentService_1.CommentServiceError("Authentication required", 401);
+    if (![...STAFF_ROLES, ...PARENT_ROLES].includes(req.user.role)) {
+        throw new commentService_1.CommentServiceError("Access denied", 403);
+    }
+    return req.user;
+}
+function positiveInteger(value, label) {
+    if ((typeof value !== "string" && typeof value !== "number") ||
+        (typeof value === "string" && !/^[1-9]\d*$/.test(value))) {
+        throw new commentService_1.CommentServiceError(`Invalid ${label}`, 400);
+    }
+    const parsed = Number(value);
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+        throw new commentService_1.CommentServiceError(`Invalid ${label}`, 400);
+    }
+    return parsed;
+}
+function validDate(value) {
+    if (!(0, dateInput_1.isDateOnlyInput)(value)) {
+        throw new commentService_1.CommentServiceError("Date must be in YYYY-MM-DD format", 400);
+    }
+    return value;
+}
+function validContent(value) {
+    if (typeof value !== "string") {
+        throw new commentService_1.CommentServiceError("Content must be text", 400);
+    }
+    const content = value.trim();
+    if (content.length === 0 || Array.from(content).length > 2000) {
+        throw new commentService_1.CommentServiceError("Content must contain 1 to 2000 characters", 400);
+    }
+    return content;
+}
+async function requireStudentAccess(user, studentId) {
+    if (STAFF_ROLES.includes(user.role))
+        return;
+    if (PARENT_ROLES.includes(user.role) &&
+        await parentService_1.ParentService.isStudentConnectedToParentUser(user.userId, studentId))
+        return;
+    throw new commentService_1.CommentServiceError("Access denied for this student", 403);
+}
+async function requireCommentAccess(user, commentId, editing = false) {
+    const comment = await commentService_1.CommentService.getCommentAccessById(commentId);
+    await requireStudentAccess(user, comment.studentId);
+    if (editing && user.role !== "admin" && comment.authorId !== user.userId) {
+        throw new commentService_1.CommentServiceError("Only the author or an admin can modify this comment", 403);
+    }
+    return comment;
+}
+function respondWithError(res, error, fallback) {
+    if (error instanceof commentService_1.CommentServiceError) {
+        res.status(error.status).json({ success: false, error: error.message, message: error.message });
+        return;
+    }
+    console.error(fallback);
+    res.status(500).json({ success: false, error: fallback });
+}
 class CommentController {
-    // Get comments with filters
     static async getComments(req, res) {
         try {
+            const user = requireCommentUser(req);
             const { studentId, date, authorRole, parentCommentId, page, limit } = req.query;
             const filters = {
-                studentId: studentId ? parseInt(studentId) : undefined,
-                date: (0, dateInput_1.normalizeDateOnlyInput)(date) || undefined,
-                authorRole: authorRole,
-                parentCommentId: parentCommentId
-                    ? parseInt(parentCommentId)
-                    : undefined,
-                page: page ? parseInt(page) : 1,
-                limit: limit ? parseInt(limit) : 50,
+                studentId: studentId === undefined ? undefined : positiveInteger(studentId, "student ID"),
+                date: date === undefined ? undefined : validDate(date),
+                authorRole: authorRole === undefined ? undefined : String(authorRole),
+                parentCommentId: parentCommentId === undefined ? undefined : positiveInteger(parentCommentId, "parent comment ID"),
+                page: page === undefined ? 1 : positiveInteger(page, "page"),
+                limit: limit === undefined ? 50 : positiveInteger(limit, "limit"),
             };
+            if (filters.limit > 100 || !Number.isSafeInteger((filters.page - 1) * filters.limit)) {
+                throw new commentService_1.CommentServiceError("Invalid pagination; limit must be between 1 and 100", 400);
+            }
+            if (authorRole !== undefined && (typeof authorRole !== "string" || !COMMENT_ROLES.includes(authorRole))) {
+                throw new commentService_1.CommentServiceError("Invalid author role", 400);
+            }
+            // Parent listings must identify the student before any content is fetched.
+            if (PARENT_ROLES.includes(user.role) && filters.studentId === undefined) {
+                throw new commentService_1.CommentServiceError("A connected student ID is required", 403);
+            }
+            if (filters.studentId !== undefined)
+                await requireStudentAccess(user, filters.studentId);
+            if (filters.parentCommentId !== undefined) {
+                const parent = await requireCommentAccess(user, filters.parentCommentId);
+                if (filters.studentId !== undefined && parent.studentId !== filters.studentId) {
+                    throw new commentService_1.CommentServiceError("Comment does not belong to this student", 400);
+                }
+            }
             const { comments, total } = await commentService_1.CommentService.getComments(filters);
             const totalPages = Math.ceil(total / filters.limit);
             res.json({
@@ -36,336 +113,121 @@ class CommentController {
             });
         }
         catch (error) {
-            console.error("Error in getComments:", error);
-            res.status(500).json({
-                success: false,
-                error: "Failed to fetch comments",
-                message: error.message,
-            });
+            respondWithError(res, error, "Failed to fetch comments");
         }
     }
-    // Get comments for a specific student
     static async getStudentComments(req, res) {
         try {
-            const studentId = parseInt(req.params.studentId);
-            const { date, authorRole } = req.query;
-            const normalizedDate = (0, dateInput_1.normalizeDateOnlyInput)(date);
-            if (isNaN(studentId)) {
-                res.status(400).json({
-                    success: false,
-                    error: "Invalid student ID",
-                });
-                return;
+            const user = requireCommentUser(req);
+            const studentId = positiveInteger(req.params.studentId, "student ID");
+            const date = req.query.date === undefined ? undefined : validDate(req.query.date);
+            const authorRole = req.query.authorRole;
+            if (authorRole !== undefined && (typeof authorRole !== "string" || !COMMENT_ROLES.includes(authorRole))) {
+                throw new commentService_1.CommentServiceError("Invalid author role", 400);
             }
-            // For parents, ensure they can only see comments for their connected students
-            if (req.user?.role === "parent") {
-                const canAccess = await parentService_1.ParentService.isStudentConnectedToParentUser(req.user.userId, studentId);
-                if (!canAccess) {
-                    res.status(403).json({
-                        success: false,
-                        error: "Access denied for this student",
-                    });
-                    return;
-                }
-            }
-            const comments = await commentService_1.CommentService.getStudentComments(studentId, normalizedDate || undefined, authorRole);
-            res.json({
-                success: true,
-                data: comments,
-            });
+            await requireStudentAccess(user, studentId);
+            const comments = await commentService_1.CommentService.getStudentComments(studentId, date, authorRole);
+            res.json({ success: true, data: comments });
         }
         catch (error) {
-            console.error("Error in getStudentComments:", error);
-            res.status(500).json({
-                success: false,
-                error: "Failed to fetch student comments",
-                message: error.message,
-            });
+            respondWithError(res, error, "Failed to fetch student comments");
         }
     }
-    // Get daily comments (admin view)
     static async getDailyComments(req, res) {
         try {
-            const { date } = req.params;
-            const normalizedDate = (0, dateInput_1.normalizeDateOnlyInput)(date);
-            if (!normalizedDate) {
-                res.status(400).json({
-                    success: false,
-                    error: "Date must be in YYYY-MM-DD format",
-                });
-                return;
-            }
-            // Only admin and teachers can view daily comments
-            if (!["admin", "teacher"].includes(req.user?.role || "")) {
-                res.status(403).json({
-                    success: false,
-                    error: "Access denied",
-                });
-                return;
-            }
-            const comments = await commentService_1.CommentService.getDailyComments(normalizedDate);
-            res.json({
-                success: true,
-                data: comments,
-            });
+            const user = requireCommentUser(req);
+            if (!STAFF_ROLES.includes(user.role))
+                throw new commentService_1.CommentServiceError("Access denied", 403);
+            const comments = await commentService_1.CommentService.getDailyComments(validDate(req.params.date));
+            res.json({ success: true, data: comments });
         }
         catch (error) {
-            console.error("Error in getDailyComments:", error);
-            res.status(500).json({
-                success: false,
-                error: "Failed to fetch daily comments",
-                message: error.message,
-            });
+            respondWithError(res, error, "Failed to fetch daily comments");
         }
     }
-    // Create a new comment
     static async createComment(req, res) {
         try {
-            const { studentId, content, date, parentCommentId } = req.body;
-            const normalizedDate = (0, dateInput_1.normalizeDateOnlyInput)(date);
-            if (!req.user) {
-                res.status(401).json({
-                    success: false,
-                    error: "Authentication required",
-                });
-                return;
-            }
-            if (!studentId || !content || !normalizedDate) {
-                res.status(400).json({
-                    success: false,
-                    error: "Student ID, content, and valid date are required",
-                });
-                return;
-            }
-            const parsedStudentId = parseInt(studentId, 10);
-            const parsedParentCommentId = parentCommentId
-                ? parseInt(parentCommentId, 10)
-                : undefined;
-            if (Number.isNaN(parsedStudentId)) {
-                res.status(400).json({
-                    success: false,
-                    error: "Invalid student ID",
-                });
-                return;
-            }
-            // Determine comment type based on user role and parentCommentId
-            let authorRole;
-            let repliedToCommentAuthorId = null;
-            let isReply = false;
-            if (parsedParentCommentId) {
-                isReply = true;
-                // Reply is allowed for parent/admin/teacher
-                if (!("parent" === req.user.role ||
-                    ["admin", "teacher"].includes(req.user.role))) {
-                    res.status(403).json({
-                        success: false,
-                        error: "Only parent, admin, or teacher can reply to comments",
-                    });
-                    return;
+            const user = requireCommentUser(req);
+            const studentId = positiveInteger(req.body?.studentId, "student ID");
+            const content = validContent(req.body?.content);
+            const date = validDate(req.body?.date);
+            const clientMessageId = req.body?.clientMessageId;
+            if (clientMessageId !== undefined && (typeof clientMessageId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(clientMessageId)))
+                throw new commentService_1.CommentServiceError('Invalid message ID', 400);
+            const parentCommentId = req.body?.parentCommentId == null
+                ? undefined
+                : positiveInteger(req.body.parentCommentId, "parent comment ID");
+            await requireStudentAccess(user, studentId);
+            const isReply = parentCommentId !== undefined;
+            if (parentCommentId !== undefined) {
+                const parent = await requireCommentAccess(user, parentCommentId);
+                if (parent.studentId !== studentId) {
+                    throw new commentService_1.CommentServiceError("Reply comment does not belong to the same student", 400);
                 }
-                if (req.user.role === "parent") {
-                    const canAccess = await parentService_1.ParentService.isStudentConnectedToParentUser(req.user.userId, parsedStudentId);
-                    if (!canAccess) {
-                        res.status(403).json({
-                            success: false,
-                            error: "Access denied for this student",
-                        });
-                        return;
-                    }
-                }
-                const parentComment = await commentService_1.CommentService.getCommentById(parsedParentCommentId);
-                if (parentComment.studentId !== parsedStudentId) {
-                    res.status(400).json({
-                        success: false,
-                        error: "Reply comment does not belong to the same student",
-                    });
-                    return;
-                }
-                repliedToCommentAuthorId = parentComment.authorId;
-                if (req.user.role === "parent") {
-                    authorRole = "parent";
-                }
-                else {
-                    authorRole = req.user.role;
+                if (parent.date !== date) {
+                    throw new commentService_1.CommentServiceError("Reply date must match the original comment date", 400);
                 }
             }
-            else {
-                // This is an original comment - only admin/teacher can create
-                if (!["admin", "teacher"].includes(req.user.role)) {
-                    res.status(403).json({
-                        success: false,
-                        error: "Only admin and teachers can create original comments",
-                    });
-                    return;
-                }
-                authorRole = req.user.role;
+            else if (!STAFF_ROLES.includes(user.role)) {
+                throw new commentService_1.CommentServiceError("Only admin and teachers can create original comments", 403);
             }
-            const commentData = {
-                studentId: parsedStudentId,
-                authorId: req.user.userId,
+            const authorRole = PARENT_ROLES.includes(user.role)
+                ? "parent"
+                : user.role;
+            const comment = await commentService_1.CommentService.createComment({
+                studentId,
+                authorId: user.userId,
                 authorRole,
-                content: content.trim(),
-                date: normalizedDate,
-                parentCommentId: parsedParentCommentId,
-            };
-            const comment = await commentService_1.CommentService.createComment(commentData);
-            if (isReply && repliedToCommentAuthorId) {
-                if (repliedToCommentAuthorId !== req.user.userId) {
-                    const actorLabel = authorRole === "parent"
-                        ? "Parent"
-                        : authorRole === "admin"
-                            ? "Admin"
-                            : "Teacher";
-                    await notificationService_1.NotificationService.createForUsers({
-                        recipientUserIds: [repliedToCommentAuthorId],
-                        actorUserId: req.user.userId,
-                        type: "COMMENT_REPLIED",
-                        title: `${actorLabel} replied`,
-                        message: `${actorLabel} replied to your comment for ${comment.studentName || "student"}.`,
-                        studentId: comment.studentId,
-                        commentId: comment.id,
-                        commentDate: comment.date,
-                    });
-                }
-            }
-            if (!isReply && (authorRole === "admin" || authorRole === "teacher")) {
-                const parentUserIds = await parentService_1.ParentService.getConnectedParentUserIds(comment.studentId);
-                const recipientUserIds = parentUserIds.filter((id) => id !== req.user?.userId);
-                if (recipientUserIds.length > 0) {
-                    await notificationService_1.NotificationService.createForUsers({
-                        recipientUserIds,
-                        actorUserId: req.user.userId,
-                        type: "COMMENT_ADDED",
-                        title: "New attendance comment",
-                        message: `A new comment was added for ${comment.studentName || "your student"}.`,
-                        studentId: comment.studentId,
-                        commentId: comment.id,
-                        commentDate: comment.date,
-                    });
-                }
-            }
+                content,
+                date,
+                parentCommentId,
+                ...(clientMessageId ? { clientMessageId } : {}),
+            });
             res.status(201).json({
                 success: true,
                 data: comment,
-                message: parsedParentCommentId
-                    ? "Reply added successfully"
-                    : "Comment created successfully",
+                message: isReply ? "Reply added successfully" : "Comment created successfully",
             });
         }
         catch (error) {
-            console.error("Error in createComment:", error);
-            res.status(500).json({
-                success: false,
-                error: "Failed to create comment",
-                message: error.message,
-            });
+            respondWithError(res, error, "Failed to create comment");
         }
     }
-    // Update a comment
     static async updateComment(req, res) {
         try {
-            const commentId = parseInt(req.params.id);
-            const { content } = req.body;
-            if (!req.user) {
-                res.status(401).json({
-                    success: false,
-                    error: "Authentication required",
-                });
-                return;
-            }
-            if (isNaN(commentId)) {
-                res.status(400).json({
-                    success: false,
-                    error: "Invalid comment ID",
-                });
-                return;
-            }
-            if (!content || content.trim().length === 0) {
-                res.status(400).json({
-                    success: false,
-                    error: "Content is required",
-                });
-                return;
-            }
-            const updatedComment = await commentService_1.CommentService.updateComment(commentId, { content: content.trim() }, req.user.userId);
-            res.json({
-                success: true,
-                data: updatedComment,
-                message: "Comment updated successfully",
-            });
+            const user = requireCommentUser(req);
+            const id = positiveInteger(req.params.id, "comment ID");
+            const content = validContent(req.body?.content);
+            await requireCommentAccess(user, id, true);
+            const comment = await commentService_1.CommentService.updateComment(id, { content }, user.userId, user.role === "admin");
+            res.json({ success: true, data: comment, message: "Comment updated successfully" });
         }
         catch (error) {
-            console.error("Error in updateComment:", error);
-            const status = error.message.includes("Unauthorized")
-                ? 403
-                : 500;
-            res.status(status).json({
-                success: false,
-                error: "Failed to update comment",
-                message: error.message,
-            });
+            respondWithError(res, error, "Failed to update comment");
         }
     }
-    // Delete a comment
     static async deleteComment(req, res) {
         try {
-            const commentId = parseInt(req.params.id);
-            if (!req.user) {
-                res.status(401).json({
-                    success: false,
-                    error: "Authentication required",
-                });
-                return;
-            }
-            if (isNaN(commentId)) {
-                res.status(400).json({
-                    success: false,
-                    error: "Invalid comment ID",
-                });
-                return;
-            }
-            await commentService_1.CommentService.deleteComment(commentId, req.user.userId);
-            res.json({
-                success: true,
-                message: "Comment deleted successfully",
-            });
+            const user = requireCommentUser(req);
+            const id = positiveInteger(req.params.id, "comment ID");
+            await requireCommentAccess(user, id, true);
+            await commentService_1.CommentService.deleteComment(id, user.userId, user.role === "admin");
+            res.json({ success: true, message: "Comment deleted successfully" });
         }
         catch (error) {
-            console.error("Error in deleteComment:", error);
-            const status = error.message.includes("Unauthorized")
-                ? 403
-                : 500;
-            res.status(status).json({
-                success: false,
-                error: "Failed to delete comment",
-                message: error.message,
-            });
+            respondWithError(res, error, "Failed to delete comment");
         }
     }
-    // Get comment thread
     static async getCommentThread(req, res) {
         try {
-            const parentCommentId = parseInt(req.params.id);
-            if (isNaN(parentCommentId)) {
-                res.status(400).json({
-                    success: false,
-                    error: "Invalid comment ID",
-                });
-                return;
-            }
-            const thread = await commentService_1.CommentService.getCommentThread(parentCommentId);
-            res.json({
-                success: true,
-                data: thread,
-            });
+            const user = requireCommentUser(req);
+            const id = positiveInteger(req.params.id, "comment ID");
+            const comment = await requireCommentAccess(user, id);
+            const thread = await commentService_1.CommentService.getCommentThread(id, comment.studentId);
+            res.json({ success: true, data: thread });
         }
         catch (error) {
-            console.error("Error in getCommentThread:", error);
-            res.status(500).json({
-                success: false,
-                error: "Failed to fetch comment thread",
-                message: error.message,
-            });
+            respondWithError(res, error, "Failed to fetch comment thread");
         }
     }
 }

@@ -8,9 +8,10 @@ export interface StudentDB extends RowDataPacket {
   parent_id: number | null;
   first_name: string;
   last_name: string;
-  date_of_birth: Date;
+  date_of_birth: string;
   grade_level: string;
   parent_key: string | null;
+  parent_name?: string;
   created_at?: Date;
 }
 
@@ -20,9 +21,10 @@ export interface Student {
   parentId: number | null;
   firstName: string;
   lastName: string;
-  dateOfBirth: Date;
+  dateOfBirth: string;
   gradeLevel: string;
   parentKey: string | null;
+  parentName?: string;
   createdAt?: Date;
 }
 
@@ -92,6 +94,7 @@ export class StudentService {
       dateOfBirth: dbStudent.date_of_birth,
       gradeLevel: dbStudent.grade_level,
       parentKey: dbStudent.parent_key,
+      parentName: dbStudent.parent_name ?? undefined,
       createdAt: dbStudent.created_at,
     };
   }
@@ -151,7 +154,7 @@ export class StudentService {
 
       // Get paginated results
       const selectQuery = `SELECT s.*, 
-         p.username as parent_name,
+         (SELECT GROUP_CONCAT(CONCAT(pu.first_name, ' ', pu.last_name) SEPARATOR ', ') FROM parent_students ps JOIN users pu ON pu.id=ps.user_id WHERE ps.student_id=s.id) as parent_name,
          p.username as parent_username
          FROM students s 
          LEFT JOIN users p ON s.parent_id = p.id 
@@ -178,7 +181,7 @@ export class StudentService {
     try {
       const [rows] = await pool.query<StudentDB[]>(
         `SELECT s.*, 
-         p.username as parent_name,
+         (SELECT GROUP_CONCAT(CONCAT(pu.first_name, ' ', pu.last_name) SEPARATOR ', ') FROM parent_students ps JOIN users pu ON pu.id=ps.user_id WHERE ps.student_id=s.id) as parent_name,
          p.username as parent_username
          FROM students s 
          LEFT JOIN users p ON s.parent_id = p.id 
@@ -196,7 +199,7 @@ export class StudentService {
     try {
       const [rows] = await pool.query<StudentDB[]>(
         `SELECT s.*, 
-         p.username as parent_name,
+         (SELECT GROUP_CONCAT(CONCAT(pu.first_name, ' ', pu.last_name) SEPARATOR ', ') FROM parent_students ps JOIN users pu ON pu.id=ps.user_id WHERE ps.student_id=s.id) as parent_name,
          p.username as parent_username
          FROM students s 
          LEFT JOIN users p ON s.parent_id = p.id 
@@ -215,7 +218,7 @@ export class StudentService {
     try {
       const [rows] = await pool.query<StudentDB[]>(
         `SELECT s.*, 
-         p.username as parent_name,
+         (SELECT GROUP_CONCAT(CONCAT(pu.first_name, ' ', pu.last_name) SEPARATOR ', ') FROM parent_students ps JOIN users pu ON pu.id=ps.user_id WHERE ps.student_id=s.id) as parent_name,
          p.username as parent_username
          FROM students s 
          LEFT JOIN users p ON s.parent_id = p.id 
@@ -354,7 +357,7 @@ export class StudentService {
       const searchPattern = `%${searchTerm}%`;
       const [rows] = await pool.query<StudentDB[]>(
         `SELECT s.*, 
-         p.username as parent_name,
+         (SELECT GROUP_CONCAT(CONCAT(pu.first_name, ' ', pu.last_name) SEPARATOR ', ') FROM parent_students ps JOIN users pu ON pu.id=ps.user_id WHERE ps.student_id=s.id) as parent_name,
          p.username as parent_username
          FROM students s 
          LEFT JOIN users p ON s.parent_id = p.id 

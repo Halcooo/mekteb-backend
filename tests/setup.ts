@@ -1,0 +1,10 @@
+process.env.NODE_ENV = "test";
+process.env.DB_HOST = "127.0.0.1";
+process.env.DB_PORT = "1";
+process.env.DB_USER = "isolated_test_no_database";
+process.env.DB_PASS = "isolated_test_no_database";
+process.env.DB_NAME = "isolated_test_no_database";
+process.env.JWT_SECRET = "test-access-secret-only-not-for-deployment-0123456789";
+process.env.JWT_REFRESH_SECRET = "test-refresh-secret-only-not-for-deployment-9876543210";
+process.env.JWT_EXPIRE = "15m";
+process.env.JWT_REFRESH_EXPIRE = "30d";

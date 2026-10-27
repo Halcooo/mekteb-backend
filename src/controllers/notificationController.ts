@@ -1,17 +1,26 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { NotificationService } from "../services/notificationService";
+import { parsePositiveInteger } from '../utils/requestValidation';
 
 export class NotificationController {
+  static async getById(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const id = parsePositiveInteger(req.params.id);
+    if (!id) { res.status(400).json({success:false,error:'INVALID_NOTIFICATION_ID'}); return; }
+    try {
+      const item = await NotificationService.getById(id, req.user!.userId);
+      if (!item) { res.status(404).json({success:false,error:'NOTIFICATION_NOT_FOUND'}); return; }
+      res.json({success:true,data:item});
+    } catch { res.status(503).json({success:false,error:'NOTIFICATIONS_UNAVAILABLE'}); }
+  }
   static async getNotifications(
     req: AuthenticatedRequest,
     res: Response,
   ): Promise<void> {
     try {
       const userId = req.user?.userId;
-      const limit = req.query.limit
-        ? parseInt(req.query.limit as string, 10)
-        : 30;
+      const limit = req.query.limit === undefined ? 30 : parsePositiveInteger(req.query.limit);
+      if (!limit || limit > 100 || (req.query.unreadOnly !== undefined && !['true','false'].includes(String(req.query.unreadOnly)))) { res.status(400).json({success:false,error:'INVALID_QUERY'}); return; }
       const unreadOnly = req.query.unreadOnly === "true";
 
       if (!userId) {
@@ -74,7 +83,7 @@ export class NotificationController {
   ): Promise<void> {
     try {
       const userId = req.user?.userId;
-      const notificationId = parseInt(req.params.id, 10);
+      const notificationId = parsePositiveInteger(req.params.id);
 
       if (!userId) {
         res.status(401).json({
@@ -84,7 +93,7 @@ export class NotificationController {
         return;
       }
 
-      if (Number.isNaN(notificationId)) {
+      if (!notificationId) {
         res.status(400).json({
           success: false,
           error: "Invalid notification ID",

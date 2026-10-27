@@ -1,13 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StudentController = void 0;
+const requestValidation_1 = require("../utils/requestValidation");
+const dateInput_1 = require("../utils/dateInput");
 const studentService_1 = require("../services/studentService");
 class StudentController {
     static async getAllStudents(req, res) {
         try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const search = req.query.search || "";
+            const page = req.query.page === undefined ? 1 : (0, requestValidation_1.parsePositiveInteger)(req.query.page);
+            const limit = req.query.limit === undefined ? 10 : (0, requestValidation_1.parsePositiveInteger)(req.query.limit);
+            const search = req.query.search ?? "";
+            // The staff daily-comments screen currently requests up to 1000 students.
+            if (page === null || limit === null || limit > 1000 ||
+                !Number.isSafeInteger((page - 1) * limit) ||
+                typeof search !== "string" || search.length > 200) {
+                res.status(400).json({ success: false, error: "Invalid pagination or search parameters" });
+                return;
+            }
             const result = await studentService_1.StudentService.getAllStudents(page, limit, search);
             res.json({
                 success: true,
@@ -33,8 +42,8 @@ class StudentController {
     }
     static async getStudentById(req, res) {
         try {
-            const id = parseInt(req.params.id);
-            if (isNaN(id)) {
+            const id = (0, requestValidation_1.parsePositiveInteger)(req.params.id);
+            if (id === null) {
                 res.status(400).json({
                     success: false,
                     error: "Invalid student ID",
@@ -65,8 +74,8 @@ class StudentController {
     }
     static async getStudentsByParent(req, res) {
         try {
-            const parent_id = parseInt(req.params.parentId);
-            if (isNaN(parent_id)) {
+            const parent_id = (0, requestValidation_1.parsePositiveInteger)(req.params.parentId);
+            if (parent_id === null) {
                 res.status(400).json({
                     success: false,
                     error: "Invalid parent ID",
@@ -117,9 +126,10 @@ class StudentController {
     }
     static async createStudent(req, res) {
         try {
-            const { parentId, firstName, lastName, dateOfBirth, gradeLevel, } = req.body;
+            const { parentId, firstName, lastName, dateOfBirth, gradeLevel, } = req.body ?? {};
             // Basic validation - parentId is now optional
-            if (!firstName || !lastName || !dateOfBirth || !gradeLevel) {
+            if (!(0, requestValidation_1.isValidText)(firstName) || !(0, requestValidation_1.isValidText)(lastName) ||
+                typeof dateOfBirth !== "string" || !(0, requestValidation_1.isValidText)(gradeLevel)) {
                 res.status(400).json({
                     success: false,
                     error: "Required fields: firstName, lastName, dateOfBirth, gradeLevel",
@@ -129,7 +139,7 @@ class StudentController {
             // Validate parentId is a number if provided
             if (parentId !== undefined &&
                 parentId !== null &&
-                (typeof parentId !== "number" || parentId <= 0)) {
+                (typeof parentId !== "number" || !Number.isSafeInteger(parentId) || parentId <= 0)) {
                 res.status(400).json({
                     success: false,
                     error: "parentId must be a valid positive number",
@@ -137,19 +147,10 @@ class StudentController {
                 return;
             }
             // Validate date format (basic check)
-            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-            if (!dateRegex.test(dateOfBirth)) {
+            if (!(0, dateInput_1.isDateOnlyInput)(dateOfBirth)) {
                 res.status(400).json({
                     success: false,
                     error: "dateOfBirth must be in YYYY-MM-DD format",
-                });
-                return;
-            }
-            // Validate names are not empty strings
-            if (firstName.trim() === "" || lastName.trim() === "") {
-                res.status(400).json({
-                    success: false,
-                    error: "First name and last name cannot be empty",
                 });
                 return;
             }
@@ -177,9 +178,9 @@ class StudentController {
     }
     static async updateStudent(req, res) {
         try {
-            const id = parseInt(req.params.id);
-            const { parentId, firstName, lastName, dateOfBirth, gradeLevel, } = req.body;
-            if (isNaN(id)) {
+            const id = (0, requestValidation_1.parsePositiveInteger)(req.params.id);
+            const { parentId, firstName, lastName, dateOfBirth, gradeLevel, } = req.body ?? {};
+            if (id === null) {
                 res.status(400).json({
                     success: false,
                     error: "Invalid student ID",
@@ -187,7 +188,7 @@ class StudentController {
                 return;
             }
             // Check if at least one field is provided
-            if (!parentId && !firstName && !lastName && !dateOfBirth && !gradeLevel) {
+            if ([parentId, firstName, lastName, dateOfBirth, gradeLevel].every((value) => value === undefined)) {
                 res.status(400).json({
                     success: false,
                     error: "At least one field must be provided for update",
@@ -197,7 +198,7 @@ class StudentController {
             // Validate parentId if provided
             if (parentId !== undefined &&
                 parentId !== null &&
-                (typeof parentId !== "number" || parentId <= 0)) {
+                (typeof parentId !== "number" || !Number.isSafeInteger(parentId) || parentId <= 0)) {
                 res.status(400).json({
                     success: false,
                     error: "parentId must be a valid positive number",
@@ -206,8 +207,7 @@ class StudentController {
             }
             // Validate date format if provided
             if (dateOfBirth !== undefined) {
-                const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-                if (!dateRegex.test(dateOfBirth)) {
+                if (!(0, dateInput_1.isDateOnlyInput)(dateOfBirth)) {
                     res.status(400).json({
                         success: false,
                         error: "dateOfBirth must be in YYYY-MM-DD format",
@@ -216,9 +216,9 @@ class StudentController {
                 }
             }
             // Validate names are not empty if provided
-            if ((firstName !== undefined && firstName.trim() === "") ||
-                (lastName !== undefined && lastName.trim() === "") ||
-                (gradeLevel !== undefined && gradeLevel.trim() === "")) {
+            if ((firstName !== undefined && !(0, requestValidation_1.isValidText)(firstName)) ||
+                (lastName !== undefined && !(0, requestValidation_1.isValidText)(lastName)) ||
+                (gradeLevel !== undefined && !(0, requestValidation_1.isValidText)(gradeLevel))) {
                 res.status(400).json({
                     success: false,
                     error: "Names and grade level cannot be empty",
@@ -261,8 +261,8 @@ class StudentController {
     }
     static async deleteStudent(req, res) {
         try {
-            const id = parseInt(req.params.id);
-            if (isNaN(id)) {
+            const id = (0, requestValidation_1.parsePositiveInteger)(req.params.id);
+            if (id === null) {
                 res.status(400).json({
                     success: false,
                     error: "Invalid student ID",

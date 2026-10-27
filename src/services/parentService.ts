@@ -1,6 +1,20 @@
 import pool from "../db";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
-import { StudentService } from "./studentService";
+import { StudentService, Student } from "./studentService";
+
+export type ParentVisibleStudent = Omit<Student, "parentKey">;
+
+function toParentVisibleStudent(student: ParentVisibleStudent): ParentVisibleStudent {
+  return {
+    id: student.id,
+    parentId: student.parentId,
+    firstName: student.firstName,
+    lastName: student.lastName,
+    dateOfBirth: student.dateOfBirth,
+    gradeLevel: student.gradeLevel,
+    createdAt: student.createdAt,
+  };
+}
 
 export interface ParentStudent {
   id: number;
@@ -14,13 +28,13 @@ export interface ParentStudent {
 export interface ConnectStudentResult {
   success: boolean;
   message: string;
-  student?: any;
+  student?: ParentVisibleStudent;
 }
 
 export interface ParentAttendanceRecord {
   id: number;
   studentId: number;
-  date: Date;
+  date: string;
   status: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -110,7 +124,7 @@ export class ParentService {
       return {
         success: true,
         message: "Successfully connected to student!",
-        student: studentData,
+        student: studentData ? toParentVisibleStudent(studentData) : undefined,
       };
     } catch (error) {
       console.error("Error connecting to student:", error);
@@ -129,7 +143,6 @@ export class ParentService {
                 s.last_name as lastName,
                 s.date_of_birth as dateOfBirth,
                 s.grade_level as gradeLevel,
-                s.parent_key as parentKey,
                 s.created_at as createdAt,
                 ps.connected_at as connectedAt,
                 COUNT(CASE WHEN UPPER(TRIM(a.status)) IN ('PRESENT', 'LATE') THEN 1 END) as present_days,
@@ -152,13 +165,14 @@ export class ParentService {
            ) latest ON latest.max_id = x.id
          ) a ON s.id = a.student_id
          WHERE ps.user_id = ?
-         GROUP BY s.id, s.parent_id, s.first_name, s.last_name, s.date_of_birth, s.grade_level, s.parent_key, s.created_at, ps.connected_at
+         GROUP BY s.id, s.parent_id, s.first_name, s.last_name, s.date_of_birth, s.grade_level, s.created_at, ps.connected_at
          ORDER BY s.last_name, s.first_name`,
         [userId],
       );
 
       return students.map((student: any) => ({
-        ...student,
+        ...toParentVisibleStudent(student),
+        connectedAt: student.connectedAt,
         lastAttendanceDate: student.last_attendance_date,
         attendanceRate:
           Math.round((Number(student.attendance_rate) || 0) * 10) / 10,

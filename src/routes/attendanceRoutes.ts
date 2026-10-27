@@ -1,7 +1,12 @@
 import { Router } from "express";
 import { AttendanceController } from "../controllers/attendanceController";
+import { authenticateToken, requireRole } from "../middleware/authMiddleware";
 
 const router = Router();
+
+// Match the existing administrator-only attendance screen. Parents use the
+// relationship-scoped endpoints under /parent/students/:id.
+router.use(authenticateToken, requireRole("admin"));
 
 // GET /api/attendance - Get all attendance records (optional ?date=YYYY-MM-DD)
 router.get("/", AttendanceController.getAllAttendance);

@@ -2,11 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ParentController = void 0;
 const parentService_1 = require("../services/parentService");
+const parentKeyGenerator_1 = require("../utils/parentKeyGenerator");
+const requestValidation_1 = require("../utils/requestValidation");
 class ParentController {
     // Connect to student using parent key
     static async connectToStudent(req, res) {
         try {
-            const { parentKey } = req.body;
+            const rawParentKey = req.body?.parentKey;
+            const parentKey = typeof rawParentKey === "string" ? rawParentKey.trim().toUpperCase() : "";
             const userId = req.user?.userId;
             if (!userId) {
                 return res.status(401).json({
@@ -14,10 +17,10 @@ class ParentController {
                     message: "User not authenticated",
                 });
             }
-            if (!parentKey) {
+            if (!(0, parentKeyGenerator_1.validateParentKeyFormat)(parentKey)) {
                 return res.status(400).json({
                     success: false,
-                    message: "Parent key is required",
+                    message: "A valid parent key is required",
                 });
             }
             const result = await parentService_1.ParentService.connectToStudent(userId, parentKey);
@@ -61,7 +64,7 @@ class ParentController {
     // Disconnect from student
     static async disconnectFromStudent(req, res) {
         try {
-            const { studentId } = req.params;
+            const studentId = (0, requestValidation_1.parsePositiveInteger)(req.params.studentId);
             const userId = req.user?.userId;
             if (!userId) {
                 return res.status(401).json({
@@ -69,13 +72,13 @@ class ParentController {
                     message: "User not authenticated",
                 });
             }
-            if (!studentId) {
+            if (studentId === null) {
                 return res.status(400).json({
                     success: false,
-                    message: "Student ID is required",
+                    message: "Invalid student ID",
                 });
             }
-            const result = await parentService_1.ParentService.disconnectFromStudent(userId, parseInt(studentId));
+            const result = await parentService_1.ParentService.disconnectFromStudent(userId, studentId);
             res.json(result);
         }
         catch (error) {
@@ -90,19 +93,22 @@ class ParentController {
     static async getStudentAttendance(req, res) {
         try {
             const userId = req.user?.userId;
-            const studentId = parseInt(req.params.studentId);
-            const limit = req.query.limit ? parseInt(req.query.limit) : 10;
+            const studentId = (0, requestValidation_1.parsePositiveInteger)(req.params.studentId);
+            const limit = req.query.limit === undefined ? 10 : (0, requestValidation_1.parsePositiveInteger)(req.query.limit);
             if (!userId) {
                 return res.status(401).json({
                     success: false,
                     message: "User not authenticated",
                 });
             }
-            if (isNaN(studentId)) {
+            if (studentId === null) {
                 return res.status(400).json({
                     success: false,
                     message: "Invalid student ID",
                 });
+            }
+            if (limit === null || limit > 200) {
+                return res.status(400).json({ success: false, message: "Limit must be between 1 and 200" });
             }
             const records = await parentService_1.ParentService.getStudentAttendanceForParent(userId, studentId, limit);
             res.json({
@@ -129,14 +135,14 @@ class ParentController {
     static async getStudentAttendanceStats(req, res) {
         try {
             const userId = req.user?.userId;
-            const studentId = parseInt(req.params.studentId);
+            const studentId = (0, requestValidation_1.parsePositiveInteger)(req.params.studentId);
             if (!userId) {
                 return res.status(401).json({
                     success: false,
                     message: "User not authenticated",
                 });
             }
-            if (isNaN(studentId)) {
+            if (studentId === null) {
                 return res.status(400).json({
                     success: false,
                     message: "Invalid student ID",

@@ -7,7 +7,7 @@ export type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED";
 export interface Attendance extends RowDataPacket {
   id: number;
   student_id: number;
-  date: Date;
+  date: string;
   status: AttendanceStatus;
   created_at?: Date;
   updated_at?: Date;
@@ -207,27 +207,9 @@ export class AttendanceService {
         throw new Error("Invalid date format");
       }
 
-      // Check if attendance already exists for this student on this date
-      const existingAttendance =
-        await AttendanceService.getStudentAttendanceByDate(
-          student_id,
-          normalizedDate,
-        );
-      if (existingAttendance) {
-        const updatedAttendance = await AttendanceService.updateAttendance(
-          existingAttendance.id,
-          { status },
-        );
-
-        if (!updatedAttendance) {
-          throw new Error("Failed to update existing attendance");
-        }
-
-        return updatedAttendance;
-      }
-
       const [result] = await pool.query(
-        "INSERT INTO attendance (student_id, date, status, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())",
+        `INSERT INTO attendance (student_id,date,status,created_at,updated_at) VALUES (?,?,?,NOW(),NOW())
+         ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id),status=VALUES(status),updated_at=NOW()`,
         [student_id, normalizedDate, status],
       );
 
@@ -355,15 +337,15 @@ export class AttendanceService {
 
       const attendanceRate =
         stats.totalDays > 0
-          ? ((stats.presentDays + stats.lateDays) / stats.totalDays) * 100
+          ? ((Number(stats.presentDays) + Number(stats.lateDays)) / Number(stats.totalDays)) * 100
           : 0;
 
       return {
-        totalDays: parseInt(stats.totalDays),
-        presentDays: parseInt(stats.presentDays),
-        absentDays: parseInt(stats.absentDays),
-        lateDays: parseInt(stats.lateDays),
-        excusedDays: parseInt(stats.excusedDays),
+        totalDays: Number(stats.totalDays)||0,
+        presentDays: Number(stats.presentDays)||0,
+        absentDays: Number(stats.absentDays)||0,
+        lateDays: Number(stats.lateDays)||0,
+        excusedDays: Number(stats.excusedDays)||0,
         attendanceRate: Math.round(attendanceRate * 100) / 100,
       };
     } catch (error) {
@@ -372,40 +354,18 @@ export class AttendanceService {
     }
   }
 
-  static async createBulkAttendance(
-    attendanceList: CreateAttendanceData[],
-  ): Promise<number> {
+  static async createBulkAttendance(attendanceList:CreateAttendanceData[]):Promise<number>{
+    if(!attendanceList.length)return 0;
+    const connection=await pool.getConnection();
     try {
-      if (attendanceList.length === 0) {
-        return 0;
+      await connection.beginTransaction();
+      for(const row of attendanceList){
+        const date=normalizeDateOnlyInput(row.date);if(!date)throw Error('Invalid date');
+        await connection.execute(`INSERT INTO attendance(student_id,date,status)VALUES(?,?,?) ON DUPLICATE KEY UPDATE status=VALUES(status),updated_at=NOW()`,[row.student_id,date,row.status]);
       }
-
-      let affectedRows = 0;
-
-      for (const attendance of attendanceList) {
-        const existing = await AttendanceService.getStudentAttendanceByDate(
-          attendance.student_id,
-          attendance.date,
-        );
-
-        if (existing) {
-          await AttendanceService.updateAttendance(existing.id, {
-            status: attendance.status,
-          });
-          affectedRows += 1;
-        } else {
-          await AttendanceService.createAttendance(attendance);
-          affectedRows += 1;
-        }
-      }
-
-      return affectedRows;
-    } catch (error) {
-      console.error("Error creating bulk attendance:", error);
-      throw new Error("Failed to create bulk attendance");
-    }
+      await connection.commit();return attendanceList.length;
+    }catch(error){await connection.rollback();throw error;}finally{connection.release();}
   }
-
   static async getAttendanceSummaryByDate(date: string): Promise<{
     totals: {
       totalStudents: number;
@@ -413,6 +373,7 @@ export class AttendanceService {
       absentCount: number;
       lateCount: number;
       excusedCount: number;
+      unrecordedCount: number;
       presentRate: number;
     };
     byGrade: any[];
@@ -445,9 +406,8 @@ export class AttendanceService {
       const excusedCount = Number(statusResult[0]?.excusedCount) || 0;
       const explicitAbsent = Number(statusResult[0]?.absentCount) || 0;
 
-      // Calculate total absent: students without records + explicitly marked absent
-      const absentCount =
-        totalStudents - presentCount - lateCount - excusedCount;
+      const absentCount = explicitAbsent;
+      const unrecordedCount = Math.max(0,totalStudents-presentCount-lateCount-excusedCount-absentCount);
 
       // Get breakdown by grade
       const [rows] = await pool.query(
@@ -455,6 +415,7 @@ export class AttendanceService {
           COALESCE(s.grade_level, 'Unknown') as grade_level,
           COUNT(s.id) as totalStudents,
           COALESCE(SUM(CASE WHEN a.status = 'PRESENT' THEN 1 ELSE 0 END), 0) as presentCount,
+          COALESCE(SUM(CASE WHEN a.status = 'ABSENT' THEN 1 ELSE 0 END), 0) as absentCount,
           COALESCE(SUM(CASE WHEN a.status = 'LATE' THEN 1 ELSE 0 END), 0) as lateCount,
           COALESCE(SUM(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END), 0) as excusedCount
          FROM students s
@@ -466,15 +427,16 @@ export class AttendanceService {
 
       const byGrade = (rows as any[]).map((row) => ({
         ...row,
-        absentCount:
+        unrecordedCount:
           Number(row.totalStudents) -
           Number(row.presentCount) -
+          Number(row.absentCount) -
           Number(row.lateCount) -
           Number(row.excusedCount),
       }));
 
       const presentRate = totalStudents
-        ? (presentCount / totalStudents) * 100
+        ? ((presentCount + lateCount) / totalStudents) * 100
         : 0;
 
       return {
@@ -484,6 +446,7 @@ export class AttendanceService {
           absentCount,
           lateCount,
           excusedCount,
+          unrecordedCount,
           presentRate: Math.round(presentRate * 10) / 10,
         },
         byGrade,

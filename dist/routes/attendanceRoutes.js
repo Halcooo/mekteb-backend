@@ -2,7 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const attendanceController_1 = require("../controllers/attendanceController");
+const authMiddleware_1 = require("../middleware/authMiddleware");
 const router = (0, express_1.Router)();
+// Match the existing administrator-only attendance screen. Parents use the
+// relationship-scoped endpoints under /parent/students/:id.
+router.use(authMiddleware_1.authenticateToken, (0, authMiddleware_1.requireRole)("admin"));
 // GET /api/attendance - Get all attendance records (optional ?date=YYYY-MM-DD)
 router.get("/", attendanceController_1.AttendanceController.getAllAttendance);
 // GET /api/attendance/:id - Get attendance record by ID

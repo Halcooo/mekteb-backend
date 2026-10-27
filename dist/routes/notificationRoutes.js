@@ -7,6 +7,7 @@ const router = (0, express_1.Router)();
 router.use(authMiddleware_1.authenticateToken);
 router.get("/", notificationController_1.NotificationController.getNotifications);
 router.get("/unread-count", notificationController_1.NotificationController.getUnreadCount);
+router.get('/:id', notificationController_1.NotificationController.getById);
 router.patch("/:id/read", notificationController_1.NotificationController.markAsRead);
 router.patch("/read-all", notificationController_1.NotificationController.markAllAsRead);
 exports.default = router;

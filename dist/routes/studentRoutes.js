@@ -5,7 +5,7 @@ const studentController_1 = require("../controllers/studentController");
 const authMiddleware_1 = require("../middleware/authMiddleware");
 const router = (0, express_1.Router)();
 // Apply authentication to all student routes
-router.use(authMiddleware_1.authenticateToken);
+router.use(authMiddleware_1.authenticateToken, (0, authMiddleware_1.requireRole)(["admin", "teacher"]));
 // GET /api/students - Get all students
 router.get("/", studentController_1.StudentController.getAllStudents);
 // GET /api/students/search?q=searchTerm - Search students

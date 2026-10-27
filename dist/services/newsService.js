@@ -127,16 +127,50 @@ class NewsService {
         }
     }
     static async deleteNews(id) {
+        const connection = await db_1.default.getConnection();
         try {
-            // First delete associated images
-            await this.deleteAllNewsImages(id);
-            // Then delete the news item
-            const [result] = await db_1.default.query("DELETE FROM news WHERE id = ?", [id]);
+            await connection.beginTransaction();
+            await connection.execute('SELECT id FROM news WHERE id=? FOR UPDATE', [id]);
+            const [images] = await connection.execute('SELECT * FROM news_images WHERE news_id=?', [id]);
+            const [result] = await connection.execute('DELETE FROM news WHERE id=?', [id]);
+            await connection.commit();
+            for (const image of images)
+                (0, multerConfig_1.deleteImageFile)(image.image_path);
             return result.affectedRows > 0;
         }
         catch (error) {
-            console.error("Error deleting news:", error);
+            await connection.rollback();
             throw error;
+        }
+        finally {
+            connection.release();
+        }
+    }
+    static async addNewsImages(newsId, files) {
+        const connection = await db_1.default.getConnection();
+        try {
+            await connection.beginTransaction();
+            const [news] = await connection.execute('SELECT id FROM news WHERE id=? FOR UPDATE', [newsId]);
+            if (!news.length)
+                throw Error('NEWS_NOT_FOUND');
+            const [count] = await connection.execute('SELECT COUNT(*) AS total FROM news_images WHERE news_id=?', [newsId]);
+            if (Number(count[0].total) + files.length > 5)
+                throw Error('TOO_MANY_IMAGES');
+            const images = [];
+            for (const file of files) {
+                const imagePath = `uploads/news-images/${file.filename}`;
+                const [result] = await connection.execute('INSERT INTO news_images(news_id,image_path,original_name,file_size,mime_type)VALUES(?,?,?,?,?)', [newsId, imagePath, file.originalname, file.size, file.mimetype]);
+                images.push({ id: result.insertId, newsId, imagePath, originalName: file.originalname, fileSize: file.size, mimeType: file.mimetype, url: (0, multerConfig_1.generateImageUrl)(imagePath) });
+            }
+            await connection.commit();
+            return images;
+        }
+        catch (error) {
+            await connection.rollback();
+            throw error;
+        }
+        finally {
+            connection.release();
         }
     }
     static async getNewsByAuthor(createdBy) {
